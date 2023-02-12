@@ -18,7 +18,7 @@ void init(){
 
 	//init VMU image
 	maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
-	vmu_draw_lcd(vmu, vmu_img);
+	vmu_draw_lcd(vmu, vmu_carl);
 
 	//init pvr
 	pvr_init_defaults();
