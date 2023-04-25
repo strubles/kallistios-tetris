@@ -13,7 +13,17 @@
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 
+typedef struct Color {
+	uint8 a;
+	uint8 r;
+	uint8 g;
+	uint8 b;
+} color;
+
 KOS_INIT_FLAGS(INIT_DEFAULT);
+
+float position_x = SCREEN_WIDTH/2;
+float position_y = SCREEN_HEIGHT/2;
 
 void init(){
 	pvr_init_defaults();
@@ -54,42 +64,6 @@ void draw_triangle(float x1, float y1,
 	vert.y = y3;
 	pvr_prim(&vert, sizeof(vert));
 }
-
-/*
-void draw_square(float left_x, float top_y, float right_x, float bottom_y, uint8 a, uint8 r, uint8 g, uint8 b){
-	pvr_poly_hdr_t hdr;
-	pvr_poly_cxt_t cxt;
-	pvr_vertex_t vert;
-
-	pvr_poly_cxt_col(&cxt, PVR_LIST_TR_POLY);
-	pvr_poly_compile(&hdr, &cxt);
-
-	pvr_prim(&hdr, sizeof(hdr));
-
-	// bottom-left, top-left, bottom-right, top-right
-
-	vert.flags = PVR_CMD_VERTEX;
-	vert.x = left_x;
-	vert.y = bottom_y;
-	vert.z = 5.0f;
-	vert.u = 0;
-	vert.v = 0;
-	vert.argb = PVR_PACK_COLOR(a/255, r/255, g/255, b/255);
-	vert.oargb = 0;
-	pvr_prim(&vert, sizeof(vert));
-
-	vert.y = top_y;
-	pvr_prim(&vert, sizeof(vert));
-
-	vert.x = right_x;
-	vert.y = bottom_y;
-	pvr_prim(&vert, sizeof(vert));
-
-	vert.y = top_y;
-	vert.flags = PVR_CMD_VERTEX_EOL;
-	pvr_prim(&vert, sizeof(vert));
-
-} */
 
 void draw_square(float x1, float x2, float y1, float y2, uint8 a, uint8 r, uint8 g, uint8 b) {
 	pvr_poly_hdr_t hdr;
@@ -144,6 +118,18 @@ void draw_square(float x1, float x2, float y1, float y2, uint8 a, uint8 r, uint8
 	pvr_prim(&vert, sizeof(vert));
 }
 
+void draw_square_centered_on(float center_x, float center_y, float width, float height, color argb) {
+	float left = center_x - (width/2);
+	float right = center_x + (width/2);
+	float top = center_y - (height/2);
+	float bottom = center_y + (height/2);
+
+	//printf("Left: %f Right: %f Top: %f Bottom: %f\n",left,right,top,bottom);
+	//printf("A: %d R: %d G: %d B: %d\n", argb.a, argb.r, argb.g, argb.b);
+
+	draw_square(left, right, top, bottom, argb.a, argb.r, argb.g, argb.b);
+}
+
 void draw_vertical_line(float x, float y1, float y2, uint8 a, uint8 r, uint8 g, uint8 b) {
 	pvr_poly_hdr_t hdr;
 	pvr_poly_cxt_t cxt;
@@ -180,7 +166,6 @@ void draw_vertical_line(float x, float y1, float y2, uint8 a, uint8 r, uint8 g, 
 	vert.y = y1;
 	pvr_prim(&vert, sizeof(vert));
 }
-
 
 void draw_horizontal_line(float x1, float x2, float y, uint8 a, uint8 r, uint8 g, uint8 b){
 	// Draws a 1-pixel wide horziontal line from x1 to x2 at height y
@@ -229,7 +214,37 @@ void draw_horizontal_line(float x1, float x2, float y, uint8 a, uint8 r, uint8 g
 	pvr_prim(&vert, sizeof(vert));
 }
 
+int check_buttons(){
+	maple_device_t *cont;
+    cont_state_t *state;
+
+    cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
+
+	if(cont) {
+		state=(cont_state_t *)maple_dev_status(cont);
+
+		if(!state){
+			return 0;
+		}
+		if(state->buttons & CONT_DPAD_UP){
+			position_y -= 1.0f;
+		}
+		if(state->buttons & CONT_DPAD_DOWN){
+			position_y += 1.0f;
+		}
+		if(state->buttons & CONT_DPAD_LEFT){
+			position_x -= 1.0f;
+		}
+		if(state->buttons & CONT_DPAD_RIGHT){
+			position_x += 1.0f;
+		}
+	}
+	return 0;
+}
+
 void draw_frame(){
+	check_buttons();
+
 	pvr_wait_ready(); // <-- Prevents those ugly flashes!
 
 	pvr_scene_begin();
@@ -250,13 +265,21 @@ void draw_frame(){
 
 	//draw_triangle(0, 0, SCREEN_WIDTH, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 255, 255, 255, 255);
 
-	draw_square(100, 200, 100, 200, 255, 100, 100, 100);
+	//draw_square(100, 200, 100, 200, 255, 100, 100, 100);
+
+	color argb;
+	argb.a = 255;
+	argb.r = 255;
+	argb.g = 0;
+	argb.b = 255;
+	//draw_square_centered_on(150, 150, 30, 30, argb);
+	draw_square_centered_on(position_x, position_y, 30, 30, argb);
+	
 
 	pvr_list_finish();
 
 	pvr_scene_finish();
 }
-
 
 int main(){
 
