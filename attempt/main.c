@@ -8,6 +8,8 @@
 #include <plx/matrix.h>
 #include <plx/prim.h>
 
+#include "vmu_img.h"
+
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 
@@ -50,6 +52,95 @@ void draw_triangle(float x1, float y1,
 	vert.flags = PVR_CMD_VERTEX_EOL; //tells PVR that this will be the final point
 	vert.x = x3;
 	vert.y = y3;
+	pvr_prim(&vert, sizeof(vert));
+}
+
+/*
+void draw_square(float left_x, float top_y, float right_x, float bottom_y, uint8 a, uint8 r, uint8 g, uint8 b){
+	pvr_poly_hdr_t hdr;
+	pvr_poly_cxt_t cxt;
+	pvr_vertex_t vert;
+
+	pvr_poly_cxt_col(&cxt, PVR_LIST_TR_POLY);
+	pvr_poly_compile(&hdr, &cxt);
+
+	pvr_prim(&hdr, sizeof(hdr));
+
+	// bottom-left, top-left, bottom-right, top-right
+
+	vert.flags = PVR_CMD_VERTEX;
+	vert.x = left_x;
+	vert.y = bottom_y;
+	vert.z = 5.0f;
+	vert.u = 0;
+	vert.v = 0;
+	vert.argb = PVR_PACK_COLOR(a/255, r/255, g/255, b/255);
+	vert.oargb = 0;
+	pvr_prim(&vert, sizeof(vert));
+
+	vert.y = top_y;
+	pvr_prim(&vert, sizeof(vert));
+
+	vert.x = right_x;
+	vert.y = bottom_y;
+	pvr_prim(&vert, sizeof(vert));
+
+	vert.y = top_y;
+	vert.flags = PVR_CMD_VERTEX_EOL;
+	pvr_prim(&vert, sizeof(vert));
+
+} */
+
+void draw_square(float x1, float x2, float y1, float y2, uint8 a, uint8 r, uint8 g, uint8 b) {
+	pvr_poly_hdr_t hdr;
+	pvr_poly_cxt_t cxt;
+	pvr_vertex_t vert;
+
+	// x1 = left
+	// x2 = right
+	// y1 = top
+	// y2 = bottom
+
+	if(y1>y2) {
+		float swap_y;
+		swap_y = y1;
+		y1 = y2;
+		y2 = swap_y;
+	}
+
+	if(x1>x2) {
+		float swap_x;
+		swap_x = x1;
+		x1 = x2;
+		x2 = swap_x;
+	}
+
+	pvr_poly_cxt_col(&cxt, PVR_LIST_TR_POLY);
+	pvr_poly_compile(&hdr, &cxt);
+
+	pvr_prim(&hdr, sizeof(hdr));
+	vert.flags = PVR_CMD_VERTEX;
+	// bottom left
+	vert.x = x1;
+	vert.y = y2;
+	vert.z = 5.0f;
+	vert.u = 0;
+	vert.v = 0;
+	vert.argb = PVR_PACK_COLOR(a/255, r/255, g/255, b/255);
+	vert.oargb = 0;
+	pvr_prim(&vert, sizeof(vert));
+
+	// top left
+	vert.y = y1;
+	pvr_prim(&vert, sizeof(vert));
+
+	// bottom right
+	vert.x = x2;
+	vert.y = y2;
+	pvr_prim(&vert, sizeof(vert));
+
+	vert.flags = PVR_CMD_VERTEX_EOL;
+	vert.y = y1;
 	pvr_prim(&vert, sizeof(vert));
 }
 
@@ -112,6 +203,7 @@ void draw_horizontal_line(float x1, float x2, float y, uint8 a, uint8 r, uint8 g
 	pvr_prim(&hdr, sizeof(hdr));
 
 	vert.flags = PVR_CMD_VERTEX;
+	// starts at bottom-left corner
 	vert.x=x1;
 	vert.y=y+1;
 	vert.z=5.0f;
@@ -121,19 +213,24 @@ void draw_horizontal_line(float x1, float x2, float y, uint8 a, uint8 r, uint8 g
 	vert.oargb=0;
 	pvr_prim(&vert, sizeof(vert));
 
+	// now top-left corner
 	vert.y=y;
 	pvr_prim(&vert, sizeof(vert));
 
+	// bottom-right
 	vert.x=x2;
 	vert.y=y+1;
 	pvr_prim(&vert, sizeof(vert));
 
 	vert.flags=PVR_CMD_VERTEX_EOL;
+
+	// top-right
 	vert.y = y;
 	pvr_prim(&vert, sizeof(vert));
 }
 
 void draw_frame(){
+	pvr_wait_ready(); // <-- Prevents those ugly flashes!
 
 	pvr_scene_begin();
 
@@ -144,10 +241,16 @@ void draw_frame(){
 	pvr_list_begin(PVR_LIST_TR_POLY);
 	//translucent drawing here
 	
-	draw_horizontal_line(100, SCREEN_WIDTH-100, 100, 255, 255, 0, 0);
-	draw_vertical_line(SCREEN_WIDTH-100, 100, SCREEN_HEIGHT-100, 255, 0, 255, 0);
-	draw_horizontal_line(100, SCREEN_WIDTH-100, SCREEN_HEIGHT-100, 255, 0, 0, 255);
-	draw_vertical_line(100, SCREEN_HEIGHT-100, 100, 255, 255, 255, 255);
+	draw_horizontal_line(100, SCREEN_WIDTH-100, 100, 255, 255, 0, 0); // red - top one
+	draw_vertical_line(SCREEN_WIDTH-100, 100, SCREEN_HEIGHT-100, 255, 0, 255, 0); // green - right one
+	draw_horizontal_line(100, SCREEN_WIDTH-100, SCREEN_HEIGHT-100, 255, 0, 0, 255); // blue - bottom
+	draw_vertical_line(100, SCREEN_HEIGHT-100, 100, 255, 255, 255, 255); // white - left
+
+	// (0,0) is located at top left
+
+	//draw_triangle(0, 0, SCREEN_WIDTH, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 255, 255, 255, 255);
+
+	draw_square(100, 200, 100, 200, 255, 100, 100, 100);
 
 	pvr_list_finish();
 
