@@ -38,6 +38,55 @@ int field_right = (SCREEN_WIDTH/2) + (FIELD_WIDTH/2);
 int field_top = (SCREEN_HEIGHT/2) - (FIELD_HEIGHT/2);
 int field_bottom = (SCREEN_HEIGHT/2) + (FIELD_HEIGHT/2);
 
+color_id TETRO_Z[3][3] = {
+	{ 1, 1, 0 },
+	{ 0, 1, 1 },
+	{ 0, 0, 0 }
+};
+
+color_id TETRO_L[3][3] = {
+	{ 0, 0, 2 },
+	{ 2, 2, 2 },
+	{ 0, 0, 0 }
+};
+
+color_id TETRO_O[2][2] = {
+	{ 3, 3 },
+	{ 3, 3 }
+};
+
+color_id TETRO_S[3][3] = {
+	{ 0, 4, 4 },
+	{ 4, 4, 0 },
+	{ 0, 0, 0 }
+};
+
+color_id TETRO_I[4][4] = {
+	{ 0, 0, 0, 0 },
+	{ 5, 5, 5, 5 },
+	{ 0, 0, 0, 0 },
+	{ 0, 0, 0, 0 }
+};
+
+color_id TETRO_J[3][3] = {
+	{ 6, 0, 0 },
+	{ 6, 6, 6 },
+	{ 0, 0, 0 }
+};
+
+color_id TETRO_T[3][3] = {
+	{ 0, 7, 0 },
+	{ 7, 7, 7 },
+	{ 0, 0, 0 }
+};
+
+color_id tetro_dummy_4x4[4][4] = {0};
+color_id tetro_dummy_3x3[3][3] = {0};
+color_id tetro_dummy_2x2[2][2] = {0};
+
+int fall_timer = 200;
+
+int has_drawn_new_tetro = 0;
 
 color COLOR_RED = {255, 255, 0, 0};
 color COLOR_ORANGE = {255, 255, 128, 0};
@@ -50,12 +99,30 @@ color COLOR_WHITE = {255, 255, 255, 255};
 color COLOR_BLACK = {255, 0, 0, 0};
 
 //setting up the field data structure
-color_id field[20][10] = {EMPTY}; //20 rows, 10 columns
+color_id field[23][10] = {EMPTY}; //23 rows, 10 columns
+// an array of 23 arrays, each with 10 items in it
+color_id temp_field[23][10] = {EMPTY};
 
 KOS_INIT_FLAGS(INIT_DEFAULT);
 
 float position_x = SCREEN_WIDTH/2;
 float position_y = SCREEN_HEIGHT/2;
+
+int active_tetro_left;
+int active_tetro_top;
+int active_tetro_rotation;
+int active_tetro_x_offset;
+int active_tetro_y_offset;
+
+/*
+void copy_tetro_array_x2(color_id *source, color_id *dest){
+	for(int i=0; i<2; i++){
+		for(int j=0; j<2; j++){
+			dest[i][j]=source[i][j];
+		}
+	}
+}
+*/
 
 color get_argb_from_enum(color_id id){
 	switch(id){
@@ -74,7 +141,7 @@ color get_argb_from_enum(color_id id){
 		case PURPLE:
 			return COLOR_PURPLE;
 		default:
-			printf("Get_argb_from_enum provided with invalid enum\n");
+			printf("Get_argb_from_enum provided with invalid enum: %d\n",id);
 			return COLOR_WHITE;
 	}
 }
@@ -169,6 +236,7 @@ void draw_square(float left, float right, float top, float bottom, color argb) {
 	vert.y = bottom;
 	pvr_prim(&vert, sizeof(vert));
 
+	// top right
 	vert.flags = PVR_CMD_VERTEX_EOL;
 	vert.y = top;
 	pvr_prim(&vert, sizeof(vert));
@@ -221,6 +289,43 @@ int check_buttons(){
 	return 0;
 }
 
+void init_i_tetro(){
+	for(int i=0; i<4; i++){
+		for(int j=0; j<4; j++){
+			tetro_dummy_4x4[i][j] = TETRO_I[i][j];
+		}
+	}
+}
+
+void add_tetro_to_temp_field(color_id id){
+	int arr_size;
+
+	if(id==3){
+		arr_size = 2; //O tetro
+	}
+	else if(id==5){
+		arr_size = 4; //I tetro
+	}
+	else{
+		arr_size = 3; //all other tetros besides O and I use 3x3 (see tetro definitions)
+	}
+
+	int start_x;
+	int start_y;
+
+	if(id==1){
+		start_x=3;
+		start_y=3;
+
+		init_i_tetro();
+
+		for (int i=0; i<4; i++){
+			temp_field[3][start_y+i]=tetro_dummy_4x4[1][i];
+		}
+	}
+	printf("%d\n",tetro_dummy_2x2[1][0]);
+}
+
 void draw_field(){
 	// One block is 20 pixels x 20 pixels
 	// it is 20 blocks * 20 pixels tall = 400 pixels
@@ -245,12 +350,17 @@ void draw_field(){
 	float block_x;
 	float block_y;
 	//now draw the blocks
-	for(int row=0; row<20; row=row+1){
+	for(int row=3; row<23; row=row+1){
 		for(int col=0;col<10; col=col+1){
 			if (field[row][col]){
 				block_x = field_left + (20*col) + 10;
-				block_y = field_top + (20*row) + 10;
+				block_y = field_top + (20*(row-3)) + 10;
 				draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_enum(field[row][col]));
+			}
+			if (temp_field[row][col]){
+				block_x = field_left + (20*col) + 10;
+				block_y = field_top + (20*(row-3)) + 10;
+				draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_enum(temp_field[row][col]));
 			}
 		}
 	}
@@ -275,6 +385,17 @@ void draw_frame(){
 	draw_horiz_line(100, SCREEN_WIDTH-100, SCREEN_HEIGHT-100, COLOR_LIGHT_BLUE); // blue - bottom
 	draw_vert_line(100, SCREEN_HEIGHT-100, 100, COLOR_WHITE); // white - left
 
+	fall_timer=fall_timer-1;
+	printf("%d\n",fall_timer);
+	if(fall_timer<=0 && has_drawn_new_tetro==0){
+		fall_timer=200;
+		add_tetro_to_temp_field(1);
+		has_drawn_new_tetro=1;
+	}
+	else if(fall_timer<=0 && has_drawn_new_tetro==1){
+		fall_timer=200;
+	}
+
 	// (0,0) is located at top left
 
 	//draw_triangle(0, 0, SCREEN_WIDTH, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 255, 255, 255, 255);
@@ -296,13 +417,16 @@ int main(){
 	int exitProgram = 0;
 
 	init();
-	field[5][5]=LIGHT_BLUE;
-	field[6][6]=DARK_BLUE;
-	field[0][0]=RED; //top-left
-	field[19][9]=PURPLE; //bottom-right
+	field[8][5]=LIGHT_BLUE;
+	field[9][6]=DARK_BLUE;
+	field[3][0]=RED; //top-left
+	field[22][9]=PURPLE; //bottom-right
+	field[19][9]=RED;
+	field[20][9]=RED;
+	field[21][9]=RED;
 
-	field[0][5]=GREEN;
-	field[5][0]=YELLOW;
+	field[3][5]=GREEN;
+	field[8][0]=YELLOW;
 
 	printf("Hello world!\n");
 	printf("How are you today? :)\n");
