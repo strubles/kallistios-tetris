@@ -12,6 +12,18 @@
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
+#define FIELD_HEIGHT 400 // 20 blocks x 20 pixels each
+#define FIELD_WIDTH 200 // 10 blocks x 20 pixels each
+
+enum Color_Id {
+	EMPTY,
+	RED,
+	ORANGE,
+	YELLOW,
+	GREEN,
+	LIGHT_BLUE,
+	DARK_BLUE
+} color_id;
 
 typedef struct Color {
 	uint8 a;
@@ -19,6 +31,25 @@ typedef struct Color {
 	uint8 g;
 	uint8 b;
 } color;
+
+int field_left = (SCREEN_WIDTH/2) - (FIELD_WIDTH/2);
+int field_right = (SCREEN_WIDTH/2) + (FIELD_WIDTH/2);
+int field_top = (SCREEN_HEIGHT/2) - (FIELD_HEIGHT/2);
+int field_bottom = (SCREEN_HEIGHT/2) + (FIELD_HEIGHT/2);
+
+
+color COLOR_RED = {255, 255, 0, 0};
+color COLOR_ORANGE = {255, 255, 128, 0};
+color COLOR_YELLOW = {255, 255, 255, 0};
+color COLOR_GREEN = {255, 0, 255, 0};
+color COLOR_LIGHT_BLUE = {255, 0, 255, 255};
+color COLOR_DARK_BLUE = {255, 0, 0, 255};
+color COLOR_PURPLE = {255, 255, 0, 255};
+color COLOR_WHITE = {255, 255, 255, 255};
+color COLOR_BLACK = {255, 0, 0, 0};
+
+//setting up the field data structure
+uint8 field[20][10] = {0}; //20 rows, 10 columns
 
 KOS_INIT_FLAGS(INIT_DEFAULT);
 
@@ -34,7 +65,7 @@ void init(){
 void draw_triangle(float x1, float y1,
 				   float x2, float y2,
 				   float x3, float y3,
-				   uint8 a, uint8 r, uint8 g, uint8 b)
+				   color argb)
 				   {
 	// POINTS SUBMITTED MUST BE IN CLOCKWISE ORDER
 	pvr_poly_hdr_t hdr;
@@ -51,7 +82,7 @@ void draw_triangle(float x1, float y1,
 	vert.z = 5.0f;
 	vert.u = 0;
 	vert.v = 0;
-	vert.argb = PVR_PACK_COLOR(a/255, r/255, g/255, b/255);
+	vert.argb = PVR_PACK_COLOR(argb.a/255, argb.r/255, argb.g/255, argb.b/255);
 	vert.oargb = 0;
 	pvr_prim(&vert, sizeof(vert));
 
@@ -65,7 +96,7 @@ void draw_triangle(float x1, float y1,
 	pvr_prim(&vert, sizeof(vert));
 }
 
-void draw_square(float x1, float x2, float y1, float y2, uint8 a, uint8 r, uint8 g, uint8 b) {
+void draw_square(float left, float right, float top, float bottom, color argb) {
 	pvr_poly_hdr_t hdr;
 	pvr_poly_cxt_t cxt;
 	pvr_vertex_t vert;
@@ -75,18 +106,20 @@ void draw_square(float x1, float x2, float y1, float y2, uint8 a, uint8 r, uint8
 	// y1 = top
 	// y2 = bottom
 
-	if(y1>y2) {
+	if(top>bottom) {
+		//printf("Warning: draw_square received a 'top' paramater that's greater than 'bottom', swapping\n");
 		float swap_y;
-		swap_y = y1;
-		y1 = y2;
-		y2 = swap_y;
+		swap_y = top;
+		top = bottom;
+		bottom = swap_y;
 	}
 
-	if(x1>x2) {
+	if(left>right) {
+		//printf("Warning: draw_square received a 'left' paramater that's greater than 'right', swapping\n");
 		float swap_x;
-		swap_x = x1;
-		x1 = x2;
-		x2 = swap_x;
+		swap_x = left;
+		left = right;
+		right = swap_x;
 	}
 
 	pvr_poly_cxt_col(&cxt, PVR_LIST_TR_POLY);
@@ -95,29 +128,28 @@ void draw_square(float x1, float x2, float y1, float y2, uint8 a, uint8 r, uint8
 	pvr_prim(&hdr, sizeof(hdr));
 	vert.flags = PVR_CMD_VERTEX;
 	// bottom left
-	vert.x = x1;
-	vert.y = y2;
+	vert.x = left;
+	vert.y = bottom;
 	vert.z = 5.0f;
 	vert.u = 0;
 	vert.v = 0;
-	vert.argb = PVR_PACK_COLOR(a/255, r/255, g/255, b/255);
+	vert.argb = PVR_PACK_COLOR(argb.a/255, argb.r/255, argb.g/255, argb.b/255);
 	vert.oargb = 0;
 	pvr_prim(&vert, sizeof(vert));
 
 	// top left
-	vert.y = y1;
+	vert.y = top;
 	pvr_prim(&vert, sizeof(vert));
 
 	// bottom right
-	vert.x = x2;
-	vert.y = y2;
+	vert.x = right;
+	vert.y = bottom;
 	pvr_prim(&vert, sizeof(vert));
 
 	vert.flags = PVR_CMD_VERTEX_EOL;
-	vert.y = y1;
+	vert.y = top;
 	pvr_prim(&vert, sizeof(vert));
 }
-
 void draw_square_centered_on(float center_x, float center_y, float width, float height, color argb) {
 	float left = center_x - (width/2);
 	float right = center_x + (width/2);
@@ -127,91 +159,15 @@ void draw_square_centered_on(float center_x, float center_y, float width, float 
 	//printf("Left: %f Right: %f Top: %f Bottom: %f\n",left,right,top,bottom);
 	//printf("A: %d R: %d G: %d B: %d\n", argb.a, argb.r, argb.g, argb.b);
 
-	draw_square(left, right, top, bottom, argb.a, argb.r, argb.g, argb.b);
+	draw_square(left, right, top, bottom, argb);
 }
 
-void draw_vertical_line(float x, float y1, float y2, uint8 a, uint8 r, uint8 g, uint8 b) {
-	pvr_poly_hdr_t hdr;
-	pvr_poly_cxt_t cxt;
-	pvr_vertex_t vert;
-	float swap_y;
-	if(y1>y2) {
-		swap_y = y1;
-		y1 = y2;
-		y2 = swap_y;
-	}
-
-	pvr_poly_cxt_col(&cxt, PVR_LIST_TR_POLY);
-	pvr_poly_compile(&hdr, &cxt);
-
-	pvr_prim(&hdr, sizeof(hdr));
-	vert.flags = PVR_CMD_VERTEX;
-	vert.x = x;
-	vert.y = y2;
-	vert.z = 5.0f;
-	vert.u = 0;
-	vert.v = 0;
-	vert.argb = PVR_PACK_COLOR(a/255, r/255, g/255, b/255);
-	vert.oargb = 0;
-	pvr_prim(&vert, sizeof(vert));
-
-	vert.y = y1;
-	pvr_prim(&vert, sizeof(vert));
-
-	vert.x = x+1;
-	vert.y = y2;
-	pvr_prim(&vert, sizeof(vert));
-
-	vert.flags = PVR_CMD_VERTEX_EOL;
-	vert.y = y1;
-	pvr_prim(&vert, sizeof(vert));
+void draw_vert_line(float x, float top, float bottom, color argb) {
+	draw_square(x, x+1, top, bottom, argb);
 }
 
-void draw_horizontal_line(float x1, float x2, float y, uint8 a, uint8 r, uint8 g, uint8 b){
-	// Draws a 1-pixel wide horziontal line from x1 to x2 at height y
-	// with color determined by rgba
-
-	pvr_poly_hdr_t hdr;
-	pvr_poly_cxt_t cxt;
-	pvr_vertex_t vert;
-
-	// make sure x2 is larger than x1
-	float swap_x;
-	if (x1 > x2) {
-		swap_x = x1;
-		x1 = x2;
-		x2 = swap_x;
-	}
-	pvr_poly_cxt_col(&cxt, PVR_LIST_TR_POLY);
-	pvr_poly_compile(&hdr, &cxt);
-
-	pvr_prim(&hdr, sizeof(hdr));
-
-	vert.flags = PVR_CMD_VERTEX;
-	// starts at bottom-left corner
-	vert.x=x1;
-	vert.y=y+1;
-	vert.z=5.0f;
-	vert.u=0;
-	vert.v=0;
-	vert.argb=PVR_PACK_COLOR(a/255, r/255, g/255, b/255);
-	vert.oargb=0;
-	pvr_prim(&vert, sizeof(vert));
-
-	// now top-left corner
-	vert.y=y;
-	pvr_prim(&vert, sizeof(vert));
-
-	// bottom-right
-	vert.x=x2;
-	vert.y=y+1;
-	pvr_prim(&vert, sizeof(vert));
-
-	vert.flags=PVR_CMD_VERTEX_EOL;
-
-	// top-right
-	vert.y = y;
-	pvr_prim(&vert, sizeof(vert));
+void draw_horiz_line(float left, float right, float y, color argb) {
+	draw_square(left, right, y, y+1, argb);
 }
 
 int check_buttons(){
@@ -242,6 +198,29 @@ int check_buttons(){
 	return 0;
 }
 
+void draw_field(){
+	// One block is 20 pixels x 20 pixels
+	// it is 20 blocks * 20 pixels tall = 400 pixels
+	// and 10 blocks * 20 pixels wide = 200 pixels
+
+	//draw edges
+	draw_horiz_line(field_left, field_right, field_top, COLOR_WHITE);
+	draw_horiz_line(field_left, field_right, field_bottom, COLOR_WHITE);
+	draw_vert_line(field_left, field_top, field_bottom, COLOR_WHITE);
+	draw_vert_line(field_right, field_top, field_bottom, COLOR_WHITE);
+
+	//draw each row
+	for(int i=20; i<FIELD_HEIGHT; i=i+20){
+		draw_horiz_line(field_left, field_right, field_top+i, COLOR_BLACK);
+	}
+
+	//draw each column
+	for(int j=20; j<FIELD_WIDTH; j=j+20){
+		draw_vert_line(field_left+j, field_top, field_bottom, COLOR_BLACK);
+	}
+
+}
+
 void draw_frame(){
 	check_buttons();
 
@@ -256,10 +235,10 @@ void draw_frame(){
 	pvr_list_begin(PVR_LIST_TR_POLY);
 	//translucent drawing here
 	
-	draw_horizontal_line(100, SCREEN_WIDTH-100, 100, 255, 255, 0, 0); // red - top one
-	draw_vertical_line(SCREEN_WIDTH-100, 100, SCREEN_HEIGHT-100, 255, 0, 255, 0); // green - right one
-	draw_horizontal_line(100, SCREEN_WIDTH-100, SCREEN_HEIGHT-100, 255, 0, 0, 255); // blue - bottom
-	draw_vertical_line(100, SCREEN_HEIGHT-100, 100, 255, 255, 255, 255); // white - left
+	draw_horiz_line(100, SCREEN_WIDTH-100, 100, COLOR_RED); // red - top one
+	draw_vert_line(SCREEN_WIDTH-100, 100, SCREEN_HEIGHT-100, COLOR_GREEN); // green - right one
+	draw_horiz_line(100, SCREEN_WIDTH-100, SCREEN_HEIGHT-100, COLOR_LIGHT_BLUE); // blue - bottom
+	draw_vert_line(100, SCREEN_HEIGHT-100, 100, COLOR_WHITE); // white - left
 
 	// (0,0) is located at top left
 
@@ -267,14 +246,10 @@ void draw_frame(){
 
 	//draw_square(100, 200, 100, 200, 255, 100, 100, 100);
 
-	color argb;
-	argb.a = 255;
-	argb.r = 255;
-	argb.g = 0;
-	argb.b = 255;
 	//draw_square_centered_on(150, 150, 30, 30, argb);
-	draw_square_centered_on(position_x, position_y, 30, 30, argb);
+	draw_square_centered_on(position_x, position_y, 30, 30, COLOR_BLACK);
 	
+	draw_field();
 
 	pvr_list_finish();
 
