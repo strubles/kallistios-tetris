@@ -15,14 +15,15 @@
 #define FIELD_HEIGHT 400 // 20 blocks x 20 pixels each
 #define FIELD_WIDTH 200 // 10 blocks x 20 pixels each
 
-enum Color_Id {
-	EMPTY,
-	RED,
-	ORANGE,
-	YELLOW,
-	GREEN,
-	LIGHT_BLUE,
-	DARK_BLUE
+typedef enum Color_Id {
+	EMPTY = 0,
+	RED = 1,
+	ORANGE = 2,
+	YELLOW = 3,
+	GREEN = 4,
+	LIGHT_BLUE = 5,
+	DARK_BLUE = 6,
+	PURPLE = 7
 } color_id;
 
 typedef struct Color {
@@ -49,12 +50,34 @@ color COLOR_WHITE = {255, 255, 255, 255};
 color COLOR_BLACK = {255, 0, 0, 0};
 
 //setting up the field data structure
-uint8 field[20][10] = {0}; //20 rows, 10 columns
+color_id field[20][10] = {EMPTY}; //20 rows, 10 columns
 
 KOS_INIT_FLAGS(INIT_DEFAULT);
 
 float position_x = SCREEN_WIDTH/2;
 float position_y = SCREEN_HEIGHT/2;
+
+color get_argb_from_enum(color_id id){
+	switch(id){
+		case RED:
+			return COLOR_RED;
+		case ORANGE:
+			return COLOR_ORANGE;
+		case YELLOW:
+			return COLOR_YELLOW;
+		case GREEN:
+			return COLOR_GREEN;
+		case LIGHT_BLUE:
+			return COLOR_LIGHT_BLUE;
+		case DARK_BLUE:
+			return COLOR_DARK_BLUE;
+		case PURPLE:
+			return COLOR_PURPLE;
+		default:
+			printf("Get_argb_from_enum provided with invalid enum\n");
+			return COLOR_WHITE;
+	}
+}
 
 void init(){
 	pvr_init_defaults();
@@ -219,6 +242,18 @@ void draw_field(){
 		draw_vert_line(field_left+j, field_top, field_bottom, COLOR_BLACK);
 	}
 
+	float block_x;
+	float block_y;
+	//now draw the blocks
+	for(int row=0; row<20; row=row+1){
+		for(int col=0;col<10; col=col+1){
+			if (field[row][col]){
+				block_x = field_left + (20*col) + 10;
+				block_y = field_top + (20*row) + 10;
+				draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_enum(field[row][col]));
+			}
+		}
+	}
 }
 
 void draw_frame(){
@@ -261,6 +296,13 @@ int main(){
 	int exitProgram = 0;
 
 	init();
+	field[5][5]=LIGHT_BLUE;
+	field[6][6]=DARK_BLUE;
+	field[0][0]=RED; //top-left
+	field[19][9]=PURPLE; //bottom-right
+
+	field[0][5]=GREEN;
+	field[5][0]=YELLOW;
 
 	printf("Hello world!\n");
 	printf("How are you today? :)\n");
