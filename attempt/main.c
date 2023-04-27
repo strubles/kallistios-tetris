@@ -121,6 +121,7 @@ color COLOR_BLACK = {255, 0, 0, 0};
 
 //setting up the field data structure
 color_id field[23][10] = {EMPTY}; //23 rows, 10 columns
+
 // an array of 23 arrays, each with 10 items in it
 color_id temp_field[23][10] = {EMPTY};
 
@@ -386,7 +387,9 @@ void replot_active_tetro(){
 	if(active_tetro.dimensions==2){
 		for(int row=0; row<2; row++){
 			for(int cell=0; cell<2; cell++){
-				temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_2x2[row][cell];
+				if(active_tetro.top_y+row<23 && active_tetro.left_x+cell<10){ //don't go off the grid
+					temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_2x2[row][cell];
+				}
 			}
 		}
 		// use tetro_dummy_2x2
@@ -396,19 +399,23 @@ void replot_active_tetro(){
 		// use tetro_Dummy_4x4
 		for(int row=0; row<4; row++){
 			for(int cell=0; cell<4; cell++){
-				temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_4x4[row][cell];
+				if(active_tetro.top_y+row<23 && active_tetro.left_x+cell<10){ //don't go off the grid
+					temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_4x4[row][cell];
+				}
 			}
 		}
 	}
 	else if (active_tetro.dimensions==3){
 		// use tetro_dummy_3x3
-		printf("Active Tetro type: %d\n",active_tetro.type);
+		//printf("Active Tetro type: %d\n",active_tetro.type);
 		for(int row=0; row<3; row++){
 			for(int cell=0; cell<3; cell++){
-				temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_3x3[row][cell];
-				printf("%d ",tetro_dummy_3x3[row][cell]);
+				if(active_tetro.top_y+row<23 && active_tetro.left_x+cell<10){ //don't go off the grid
+					temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_3x3[row][cell];
+				}
+				//printf("%d ",tetro_dummy_3x3[row][cell]);
 			}
-			printf("\n");
+			//printf("\n");
 		}
 	}
 	else{
@@ -417,7 +424,40 @@ void replot_active_tetro(){
 	}
 }
 
+void commit_tetro(){
+	// The active tetromino gets copied from the active tetromino array to the main field
+	// data structure to "set" it.
+	// THIS DOES NOT DO CHECKS to validate position!
+
+	for(int row=0; row<23; row=row+1){
+		for(int cell=0; cell<10; cell=cell+1){
+			if(temp_field[row][cell]>0){
+				field[row][cell]=temp_field[row][cell];
+			}
+		}
+	}
+
+}
+
 int num=1;
+
+int check_valid_state(){
+	//Checks for overlapping tiles between active tetromino and field
+	//Returns 0 (false) if an overlap is found (state is invalid)
+	//Returns 1 (true) if an overlap is NOT found (state is valid)
+	for(int row=0; row<23; row++){
+		for(int cell=0; cell<10; cell++){
+			if(field[row][cell]!=0 && temp_field[row][cell]!=0){
+				return 0;
+			}
+		}
+	}
+	return 1;
+}
+
+void tetro_fall(){
+	active_tetro.top_y+=1;
+}
 
 void generate_new_tetro(){
 	//color_id random_id = (rand() % 7)+1;
@@ -517,7 +557,7 @@ void draw_frame(){
 	//draw_square(100, 200, 100, 200, 255, 100, 100, 100);
 
 	//draw_square_centered_on(150, 150, 30, 30, argb);
-	draw_square_centered_on(position_x, position_y, 30, 30, COLOR_BLACK);
+	//draw_square_centered_on(position_x, position_y, 30, 30, COLOR_BLACK);
 	
 	draw_field();
 
