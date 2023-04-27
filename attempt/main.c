@@ -489,14 +489,16 @@ int tetro_fall(){
 	// 1 - it is set, made a new tetro
 	// 0 - this tetro is still active
 	active_tetro.top_y += 1;
+	replot_active_tetro();
 	if(check_valid_state()){
-		replot_active_tetro();
 		return 0;
 	} else { //not valid
 		active_tetro.top_y -= 1; //undo it
+		replot_active_tetro();
 		commit_tetro();
 		return 1;
 	}
+	//replot_active_tetro();
 }
 
 void generate_new_tetro(){
