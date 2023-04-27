@@ -19,13 +19,13 @@
 
 typedef enum Color_Id {
 	EMPTY = 0,
-	RED = 1,
-	ORANGE = 2,
-	YELLOW = 3,
-	GREEN = 4,
-	LIGHT_BLUE = 5,
-	DARK_BLUE = 6,
-	PURPLE = 7
+	RED = 1, // Z
+	ORANGE = 2, // L
+	YELLOW = 3, // O
+	GREEN = 4, // S
+	LIGHT_BLUE = 5, // I
+	DARK_BLUE = 6, // J
+	PURPLE = 7 // T
 } color_id;
 
 typedef struct Color {
@@ -62,37 +62,31 @@ color_id TETRO_Z[3][3] = {
 	{ 0, 1, 1 },
 	{ 0, 0, 0 }
 };
-
 color_id TETRO_L[3][3] = {
 	{ 0, 0, 2 },
 	{ 2, 2, 2 },
 	{ 0, 0, 0 }
 };
-
 color_id TETRO_O[2][2] = {
 	{ 3, 3 },
 	{ 3, 3 }
 };
-
 color_id TETRO_S[3][3] = {
 	{ 0, 4, 4 },
 	{ 4, 4, 0 },
 	{ 0, 0, 0 }
 };
-
 color_id TETRO_I[4][4] = {
 	{ 0, 0, 0, 0 },
 	{ 5, 5, 5, 5 },
 	{ 0, 0, 0, 0 },
 	{ 0, 0, 0, 0 }
 };
-
 color_id TETRO_J[3][3] = {
 	{ 6, 0, 0 },
 	{ 6, 6, 6 },
 	{ 0, 0, 0 }
 };
-
 color_id TETRO_T[3][3] = {
 	{ 0, 7, 0 },
 	{ 7, 7, 7 },
@@ -116,7 +110,7 @@ color_id active_tetro_type;
 */
 
 color COLOR_RED = {255, 255, 0, 0};
-color COLOR_ORANGE = {255, 255, 128, 0};
+color COLOR_ORANGE = {255, 255, 174, 94};
 color COLOR_YELLOW = {255, 255, 255, 0};
 color COLOR_GREEN = {255, 0, 255, 0};
 color COLOR_LIGHT_BLUE = {255, 0, 255, 255};
@@ -136,16 +130,6 @@ float position_x = SCREEN_WIDTH/2;
 float position_y = SCREEN_HEIGHT/2;
 
 tetrodata active_tetro;
-
-/*
-void copy_tetro_array_x2(color_id *source, color_id *dest){
-	for(int i=0; i<2; i++){
-		for(int j=0; j<2; j++){
-			dest[i][j]=source[i][j];
-		}
-	}
-}
-*/
 
 color get_argb_from_enum(color_id id){
 	switch(id){
@@ -347,21 +331,21 @@ void init_new_tetro(color_id id){
 
 		if(id==RED){ //Z			
 			for(int i=0; i<3; i++){
-				for(int j=0; j<2; j++){
+				for(int j=0; j<3; j++){
 					tetro_dummy_3x3[i][j] = TETRO_Z[i][j];
 				}
 			}
 		}
 		else if(id==ORANGE){ //L
 			for(int i=0; i<3; i++){
-				for(int j=0; j<2; j++){
+				for(int j=0; j<3; j++){
 					tetro_dummy_3x3[i][j] = TETRO_L[i][j];
 				}
 			}
 		}
 		else if(id==GREEN){ //S
 			for(int i=0; i<3; i++){
-				for(int j=0; j<2; j++){
+				for(int j=0; j<3; j++){
 					tetro_dummy_3x3[i][j] = TETRO_S[i][j];
 				}
 			}
@@ -369,17 +353,20 @@ void init_new_tetro(color_id id){
 
 		else if(id==DARK_BLUE){ //J
 			for(int i=0; i<3; i++){
-				for(int j=0; j<2; j++){
+				for(int j=0; j<3; j++){
 					tetro_dummy_3x3[i][j] = TETRO_J[i][j];
 				}
 			}
 		}
 
 		else if(id==PURPLE){ //T
+			printf("Loading T tetro...\n");
 			for(int i=0; i<3; i++){
-				for(int j=0; j<2; j++){
-					tetro_dummy_3x3[i][j] = TETRO_Z[i][j];
+				for(int j=0; j<3; j++){
+					tetro_dummy_3x3[i][j] = TETRO_T[i][j];
+					//printf("%d ",tetro_dummy_3x3[i][j]);
 				}
+				//printf("\n");
 			}
 		}
 
@@ -394,18 +381,6 @@ void replot_active_tetro(){
 	// Adds the current active_tetro to the temp field (using data from the
 	// associated tetro_dummy array)
 
-	/*
-	typedef struct Tetrodata {
-	int top_y;
-	int left_x;
-	int bottom_y;
-	int right_x;
-	color_id type;
-	int dimensions;
-	rotation orientation;
-} tetrodata;
-*/
-	//temp_field={EMPTY}; //clear temp field (only 1 tetro is on it at a time)
 	memset(temp_field, EMPTY, sizeof(temp_field));
 
 	if(active_tetro.dimensions==2){
@@ -427,10 +402,13 @@ void replot_active_tetro(){
 	}
 	else if (active_tetro.dimensions==3){
 		// use tetro_dummy_3x3
+		printf("Active Tetro type: %d\n",active_tetro.type);
 		for(int row=0; row<3; row++){
 			for(int cell=0; cell<3; cell++){
 				temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_3x3[row][cell];
+				printf("%d ",tetro_dummy_3x3[row][cell]);
 			}
+			printf("\n");
 		}
 	}
 	else{
@@ -439,11 +417,21 @@ void replot_active_tetro(){
 	}
 }
 
-void generate_new_tetro(){
-	color_id random_id = (rand() % 7)+1;
-	printf("Random color: %d\n",random_id);
+int num=1;
 
-	init_new_tetro(random_id);
+void generate_new_tetro(){
+	//color_id random_id = (rand() % 7)+1;
+	//printf("Random color: %d\n",random_id);
+
+	//init_new_tetro(random_id);
+	init_new_tetro(num);
+	if(num>=7){
+		num=1;
+	}
+	else{
+		num++;
+	}
+
 	replot_active_tetro();
 }
 
@@ -543,6 +531,7 @@ int main(){
 	int exitProgram = 0;
 
 	init();
+	/*
 	field[8][5]=LIGHT_BLUE;
 	field[9][6]=DARK_BLUE;
 	field[3][0]=RED; //top-left
@@ -553,6 +542,7 @@ int main(){
 
 	field[3][5]=GREEN;
 	field[8][0]=YELLOW;
+	*/
 
 	printf("Hello world!\n");
 	printf("How are you today? :)\n");
