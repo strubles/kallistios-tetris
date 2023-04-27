@@ -298,6 +298,9 @@ void draw_horiz_line(float left, float right, float y, color argb) {
 	draw_square(left, right, y, y+1, argb);
 }
 
+
+
+/*
 int check_buttons(){
 	maple_device_t *cont;
     cont_state_t *state;
@@ -325,6 +328,7 @@ int check_buttons(){
 	}
 	return 0;
 }
+*/
 
 void init_new_tetro(color_id id){
 
@@ -340,7 +344,7 @@ void init_new_tetro(color_id id){
 		}
 		//now configure the correct initial settings in the active tetro struct
 		active_tetro.left_x=3;
-		active_tetro.top_y=2 + 5;
+		active_tetro.top_y=2;
 		active_tetro.dimensions=4;
 	}
 	else if(id==YELLOW){
@@ -351,13 +355,13 @@ void init_new_tetro(color_id id){
 		}
 
 		active_tetro.left_x = 4;
-		active_tetro.top_y=3 + 5;
+		active_tetro.top_y=3;
 		active_tetro.dimensions=2;
 	}
 	else {
 		active_tetro.dimensions=3;
 		active_tetro.left_x=3;
-		active_tetro.top_y=3 + 5;
+		active_tetro.top_y=3;
 
 		if(id==RED){ //Z			
 			for(int i=0; i<3; i++){
@@ -408,8 +412,9 @@ void init_new_tetro(color_id id){
 }
 
 void replot_active_tetro(){
-	// Adds the current active_tetro to the temp field (using data from the
-	// associated tetro_dummy array)
+	// Adds active_tetro to the temp_field matrix, in the position and
+	// orientation specified by the data members in active_tetro.
+	// You have to do this before you check the validity of the fields.
 
 	memset(temp_field, EMPTY, sizeof(temp_field));
 
@@ -468,12 +473,12 @@ void commit_tetro(){
 
 }
 
-int num=1;
-
 int check_valid_state(){
 	//Checks for overlapping tiles between active tetromino and field
 	//Returns 0 (false) if an overlap is found (state is invalid)
 	//Returns 1 (true) if an overlap is NOT found (state is valid)
+	//It does not undo it, it just determines if it's valid.
+
 	for(int row=0; row<24; row++){
 		for(int cell=0; cell<12; cell++){
 			if(field[row][cell]!=0 && temp_field[row][cell]!=0){
@@ -482,6 +487,24 @@ int check_valid_state(){
 		}
 	}
 	return 1;
+}
+
+void tetro_left(){
+	active_tetro.left_x -= 1;
+	replot_active_tetro();
+	if(!check_valid_state()){
+		active_tetro.left_x += 1;
+		replot_active_tetro();
+	}
+}
+
+void tetro_right(){
+	active_tetro.left_x += 1;
+	replot_active_tetro();
+	if(!check_valid_state()){
+		active_tetro.left_x -= 1;
+		replot_active_tetro();
+	}
 }
 
 int tetro_fall(){
@@ -501,20 +524,57 @@ int tetro_fall(){
 	//replot_active_tetro();
 }
 
+void hard_drop(){
+	int tetro_is_set=0;
+	while(!tetro_is_set){
+		tetro_is_set = tetro_fall();
+	}
+}
+
+int move_timebuffer = 10;
+
+int move_tetromino(){
+	maple_device_t *cont;
+    cont_state_t *state;
+
+    cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
+
+	if(cont) {
+		state=(cont_state_t *)maple_dev_status(cont);
+
+		if(!state){
+			return 0;
+		}
+		if(move_timebuffer==0){
+			if(state->buttons & CONT_DPAD_UP){
+				hard_drop();
+				move_timebuffer=10;
+			}
+			if(state->buttons & CONT_DPAD_DOWN){
+				tetro_fall();
+				move_timebuffer=10;
+			}
+			if(state->buttons & CONT_DPAD_LEFT){
+				tetro_left();
+				move_timebuffer=10;
+			}
+			if(state->buttons & CONT_DPAD_RIGHT){
+				tetro_right();
+				move_timebuffer=10;
+			}
+		}
+		if(move_timebuffer>0){
+			move_timebuffer-=1;
+		}
+
+	}
+	return 0;
+}
+
 void generate_new_tetro(){
-	//color_id random_id = (rand() % 7)+1;
-	//printf("Random color: %d\n",random_id);
+	color_id random_id = (rand() % 7)+1;
 
-	//init_new_tetro(random_id);
-	init_new_tetro(num);
-
-	if(num>=7){
-		num=1;
-	}
-	else{
-		num++;
-	}
-
+	init_new_tetro(random_id);
 	replot_active_tetro();
 }
 
@@ -564,10 +624,25 @@ int fall_timer = 60;
 int tetro_set = 1;
 
 void draw_frame(){
-	check_buttons();
+
+	//check_buttons();
+	move_tetromino();
+
+	fall_timer=fall_timer-1;
+
+	if(tetro_set==1){
+		generate_new_tetro();
+		//printf("Generating new tetro...");
+		tetro_set=0;
+	}
+
+	if(fall_timer<=0){
+		fall_timer=60;
+		tetro_set = tetro_fall();
+	}
+
 
 	pvr_wait_ready(); // <-- Prevents those ugly flashes!
-
 	pvr_scene_begin();
 
 	pvr_list_begin(PVR_LIST_OP_POLY);
@@ -581,41 +656,6 @@ void draw_frame(){
 	draw_vert_line(SCREEN_WIDTH-100, 100, SCREEN_HEIGHT-100, COLOR_GREEN); // green - right one
 	draw_horiz_line(100, SCREEN_WIDTH-100, SCREEN_HEIGHT-100, COLOR_LIGHT_BLUE); // blue - bottom
 	draw_vert_line(100, SCREEN_HEIGHT-100, 100, COLOR_WHITE); // white - left
-
-	fall_timer=fall_timer-1;
-
-	if(tetro_set==1){
-		generate_new_tetro();
-		printf("Generating new tetro...");
-		tetro_set=0;
-	}
-
-	//generate_new_tetro();
-
-	//printf("%d\n",fall_timer);
-	if(fall_timer<=0){ //&& has_drawn_new_tetro==0){
-		printf("Tetro Fall\n");
-		fall_timer=60;
-		tetro_set = tetro_fall();
-
-		//add_tetro_to_temp_field(1);
-		//printf("Generating new tetro...\n");
-		//generate_new_tetro();
-		
-		//has_drawn_new_tetro=1;
-	}
-	//else if(fall_timer<=0 && has_drawn_new_tetro==1){
-	//	fall_timer=200;
-	//}
-
-	// (0,0) is located at top left
-
-	//draw_triangle(0, 0, SCREEN_WIDTH, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 255, 255, 255, 255);
-
-	//draw_square(100, 200, 100, 200, 255, 100, 100, 100);
-
-	//draw_square_centered_on(150, 150, 30, 30, argb);
-	//draw_square_centered_on(position_x, position_y, 30, 30, COLOR_BLACK);
 	
 	draw_field();
 
