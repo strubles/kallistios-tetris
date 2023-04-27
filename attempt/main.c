@@ -97,8 +97,6 @@ color_id tetro_dummy_4x4[4][4] = {0};
 color_id tetro_dummy_3x3[3][3] = {0};
 color_id tetro_dummy_2x2[2][2] = {0};
 
-int fall_timer = 200;
-
 int has_drawn_new_tetro = 0;
 /*
 int active_tetro_left;
@@ -120,10 +118,41 @@ color COLOR_WHITE = {255, 255, 255, 255};
 color COLOR_BLACK = {255, 0, 0, 0};
 
 //setting up the field data structure
-color_id field[23][10] = {EMPTY}; //23 rows, 10 columns
+//color_id field[23][10] = {EMPTY}; //23 rows, 10 columns
+color_id field[24][12] = {
+
+//    0       1  2  3  4  5  6  7  8  9  10      11
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 0
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 1
+	{ 1, /**/ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, /**/ 1}, // 2
+	/**********************************************/ //Top boundary of visible area
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 3
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 4
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 5
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 6
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 7
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 8
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 9
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 10
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 11
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 12
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 13
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 14
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 15
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 16
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 17
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 18
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 19
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 20
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 21
+	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 22
+	/**********************************************/ //Bottom boundary of visible area
+	{ 1, /**/ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, /**/ 1}, // 23
+//        ^--- Left boundary of vis. area     ^--- Right boundary of visible area
+};
 
 // an array of 23 arrays, each with 10 items in it
-color_id temp_field[23][10] = {EMPTY};
+color_id temp_field[24][12] = {EMPTY};
 
 KOS_INIT_FLAGS(INIT_DEFAULT);
 
@@ -361,7 +390,7 @@ void init_new_tetro(color_id id){
 		}
 
 		else if(id==PURPLE){ //T
-			printf("Loading T tetro...\n");
+			//printf("Loading T tetro...\n");
 			for(int i=0; i<3; i++){
 				for(int j=0; j<3; j++){
 					tetro_dummy_3x3[i][j] = TETRO_T[i][j];
@@ -387,7 +416,7 @@ void replot_active_tetro(){
 	if(active_tetro.dimensions==2){
 		for(int row=0; row<2; row++){
 			for(int cell=0; cell<2; cell++){
-				if(active_tetro.top_y+row<23 && active_tetro.left_x+cell<10){ //don't go off the grid
+				if(active_tetro.top_y+row<24 && active_tetro.left_x+cell<12){ //don't go off the grid
 					temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_2x2[row][cell];
 				}
 			}
@@ -399,7 +428,7 @@ void replot_active_tetro(){
 		// use tetro_Dummy_4x4
 		for(int row=0; row<4; row++){
 			for(int cell=0; cell<4; cell++){
-				if(active_tetro.top_y+row<23 && active_tetro.left_x+cell<10){ //don't go off the grid
+				if(active_tetro.top_y+row<24 && active_tetro.left_x+cell<12){ //don't go off the grid
 					temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_4x4[row][cell];
 				}
 			}
@@ -410,7 +439,7 @@ void replot_active_tetro(){
 		//printf("Active Tetro type: %d\n",active_tetro.type);
 		for(int row=0; row<3; row++){
 			for(int cell=0; cell<3; cell++){
-				if(active_tetro.top_y+row<23 && active_tetro.left_x+cell<10){ //don't go off the grid
+				if(active_tetro.top_y+row<24 && active_tetro.left_x+cell<12){ //don't go off the grid
 					temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_3x3[row][cell];
 				}
 				//printf("%d ",tetro_dummy_3x3[row][cell]);
@@ -429,8 +458,8 @@ void commit_tetro(){
 	// data structure to "set" it.
 	// THIS DOES NOT DO CHECKS to validate position!
 
-	for(int row=0; row<23; row=row+1){
-		for(int cell=0; cell<10; cell=cell+1){
+	for(int row=0; row<24; row=row+1){
+		for(int cell=0; cell<12; cell=cell+1){
 			if(temp_field[row][cell]>0){
 				field[row][cell]=temp_field[row][cell];
 			}
@@ -445,8 +474,8 @@ int check_valid_state(){
 	//Checks for overlapping tiles between active tetromino and field
 	//Returns 0 (false) if an overlap is found (state is invalid)
 	//Returns 1 (true) if an overlap is NOT found (state is valid)
-	for(int row=0; row<23; row++){
-		for(int cell=0; cell<10; cell++){
+	for(int row=0; row<24; row++){
+		for(int cell=0; cell<12; cell++){
 			if(field[row][cell]!=0 && temp_field[row][cell]!=0){
 				return 0;
 			}
@@ -455,8 +484,19 @@ int check_valid_state(){
 	return 1;
 }
 
-void tetro_fall(){
-	active_tetro.top_y+=1;
+int tetro_fall(){
+	//RETURNS: whether this tetro is now set
+	// 1 - it is set, made a new tetro
+	// 0 - this tetro is still active
+	active_tetro.top_y += 1;
+	if(check_valid_state()){
+		replot_active_tetro();
+		return 0;
+	} else { //not valid
+		active_tetro.top_y -= 1; //undo it
+		commit_tetro();
+		return 1;
+	}
 }
 
 void generate_new_tetro(){
@@ -465,6 +505,7 @@ void generate_new_tetro(){
 
 	//init_new_tetro(random_id);
 	init_new_tetro(num);
+
 	if(num>=7){
 		num=1;
 	}
@@ -500,14 +541,14 @@ void draw_field(){
 	float block_y;
 	//now draw the blocks
 	for(int row=3; row<23; row=row+1){
-		for(int col=0;col<10; col=col+1){
+		for(int col=1;col<11; col=col+1){
 			if (field[row][col]){
-				block_x = field_left + (20*col) + 10;
+				block_x = field_left + (20*(col-1)) + 10;
 				block_y = field_top + (20*(row-3)) + 10;
 				draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_enum(field[row][col]));
 			}
 			if (temp_field[row][col]){
-				block_x = field_left + (20*col) + 10;
+				block_x = field_left + (20*(col-1)) + 10;
 				block_y = field_top + (20*(row-3)) + 10;
 				draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_enum(temp_field[row][col]));
 			}
@@ -516,6 +557,9 @@ void draw_field(){
 }
 
 //void move_active_tetro_downwards
+
+int fall_timer = 60;
+int tetro_set = 1;
 
 void draw_frame(){
 	check_buttons();
@@ -537,12 +581,24 @@ void draw_frame(){
 	draw_vert_line(100, SCREEN_HEIGHT-100, 100, COLOR_WHITE); // white - left
 
 	fall_timer=fall_timer-1;
+
+	if(tetro_set==1){
+		generate_new_tetro();
+		printf("Generating new tetro...");
+		tetro_set=0;
+	}
+
+	//generate_new_tetro();
+
 	//printf("%d\n",fall_timer);
 	if(fall_timer<=0){ //&& has_drawn_new_tetro==0){
-		fall_timer=200;
+		printf("Tetro Fall\n");
+		fall_timer=60;
+		tetro_set = tetro_fall();
+
 		//add_tetro_to_temp_field(1);
-		printf("Generating new tetro...\n");
-		generate_new_tetro();
+		//printf("Generating new tetro...\n");
+		//generate_new_tetro();
 		
 		//has_drawn_new_tetro=1;
 	}
