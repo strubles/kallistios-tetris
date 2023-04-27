@@ -2,7 +2,6 @@
 
 // resolution is 640w x 480h
 
-
 #include <kos.h>
 
 #include <plx/matrix.h>
@@ -45,8 +44,6 @@ typedef enum Rotation {
 typedef struct Tetrodata {
 	int top_y;
 	int left_x;
-	int bottom_y;
-	int right_x;
 	color_id type;
 	int dimensions;
 	rotation orientation;
@@ -57,6 +54,8 @@ int field_right = (SCREEN_WIDTH/2) + (FIELD_WIDTH/2);
 int field_top = (SCREEN_HEIGHT/2) - (FIELD_HEIGHT/2);
 int field_bottom = (SCREEN_HEIGHT/2) + (FIELD_HEIGHT/2);
 
+// Arrays representing what each tetromino looks like.
+// These are intended to be read-only.
 color_id TETRO_Z[3][3] = {
 	{ 1, 1, 0 },
 	{ 0, 1, 1 },
@@ -93,19 +92,18 @@ color_id TETRO_T[3][3] = {
 	{ 0, 0, 0 }
 };
 
+// Arrays for holding the real current tetromino.
+// When a new tetromino is spawned, the relevant tetro array (TETRO_Z, TETRO_L, etc)
+// is copied into it.
+// Then, these "dummy" arrays can be rotated, without effecting how the next
+// tetromino of the same type will spawn in.
+// There are 3 of them because while most tetrominos go in the 3x3 one, the I needs 4x4 and
+// the O needs 2x2.
 color_id tetro_dummy_4x4[4][4] = {0};
 color_id tetro_dummy_3x3[3][3] = {0};
 color_id tetro_dummy_2x2[2][2] = {0};
 
 int has_drawn_new_tetro = 0;
-/*
-int active_tetro_left;
-int active_tetro_top;
-int active_tetro_rotation;
-int active_tetro_x_offset;
-int active_tetro_y_offset;
-color_id active_tetro_type;
-*/
 
 color COLOR_RED = {255, 255, 0, 0};
 color COLOR_ORANGE = {255, 255, 174, 94};
@@ -117,10 +115,8 @@ color COLOR_PURPLE = {255, 255, 0, 255};
 color COLOR_WHITE = {255, 255, 255, 255};
 color COLOR_BLACK = {255, 0, 0, 0};
 
-//setting up the field data structure
-//color_id field[23][10] = {EMPTY}; //23 rows, 10 columns
+//setting up the field data structure.
 color_id field[24][12] = {
-
 //    0       1  2  3  4  5  6  7  8  9  10      11
 	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 0
 	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 1
@@ -150,9 +146,17 @@ color_id field[24][12] = {
 	{ 1, /**/ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, /**/ 1}, // 23
 //        ^--- Left boundary of vis. area     ^--- Right boundary of visible area
 };
+// The border of 1's is interpreted as tetromino blocks (red ones to be exact) but are not
+// rendered to the screen and are ignored when checking for filled lines. The purpose of
+// this is so I can prevent tetrominos from going off the screen in the same exact way that I
+// prevent tetrominos from overlapping/intersecting with other tetrominos.
 
-// an array of 23 arrays, each with 10 items in it
+// an array of 23 arrays, each with 12 items in it
 color_id temp_field[24][12] = {EMPTY};
+// This variable an empty version of the field matrix. It is where the current active tetromino is put.
+// It is rendered to the screen directly on top of the main field matrix. When a tetromino is set,
+// it is copied over to the main field matrix in the same location, and the temp_field matrix is
+// cleared out for the next tetromino.
 
 KOS_INIT_FLAGS(INIT_DEFAULT);
 
@@ -160,6 +164,9 @@ float position_x = SCREEN_WIDTH/2;
 float position_y = SCREEN_HEIGHT/2;
 
 tetrodata active_tetro;
+// This holds data on the current active tetromino. It is continuously overwritten with the next
+// tetromino as the old tetromino get committed to the field matrix and doesn't need to be kept
+// track of anymore.
 
 color get_argb_from_enum(color_id id){
 	switch(id){
@@ -187,6 +194,10 @@ void init(){
 	pvr_init_defaults();
 
 	pvr_set_bg_color(1.0,0.5,0.2);
+
+	maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
+	vmu_draw_lcd(vmu, vmu_carl);
+
 }
 
 void draw_triangle(float x1, float y1,
@@ -298,39 +309,12 @@ void draw_horiz_line(float left, float right, float y, color argb) {
 	draw_square(left, right, y, y+1, argb);
 }
 
-
-
-/*
-int check_buttons(){
-	maple_device_t *cont;
-    cont_state_t *state;
-
-    cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
-
-	if(cont) {
-		state=(cont_state_t *)maple_dev_status(cont);
-
-		if(!state){
-			return 0;
-		}
-		if(state->buttons & CONT_DPAD_UP){
-			position_y -= 1.0f;
-		}
-		if(state->buttons & CONT_DPAD_DOWN){
-			position_y += 1.0f;
-		}
-		if(state->buttons & CONT_DPAD_LEFT){
-			position_x -= 1.0f;
-		}
-		if(state->buttons & CONT_DPAD_RIGHT){
-			position_x += 1.0f;
-		}
-	}
-	return 0;
-}
-*/
-
 void init_new_tetro(color_id id){
+	// This function takes a color_id (which also dictates the type of tetromino) and
+	// populates the active_tetro variable with data representing a newly spawned
+	// tetromino of that type.
+	// It also fills the relevant "dummy" tetromino array with a fresh copy of that tetromino's
+	// data array (TETRO_I, TETRO_J, etc)
 
 	active_tetro.orientation=DEFAULT;
 	active_tetro.type=id;
@@ -343,7 +327,7 @@ void init_new_tetro(color_id id){
 			}
 		}
 		//now configure the correct initial settings in the active tetro struct
-		active_tetro.left_x=3;
+		active_tetro.left_x=4;
 		active_tetro.top_y=2;
 		active_tetro.dimensions=4;
 	}
@@ -354,13 +338,13 @@ void init_new_tetro(color_id id){
 			}
 		}
 
-		active_tetro.left_x = 4;
+		active_tetro.left_x = 5;
 		active_tetro.top_y=3;
 		active_tetro.dimensions=2;
 	}
 	else {
 		active_tetro.dimensions=3;
-		active_tetro.left_x=3;
+		active_tetro.left_x=4;
 		active_tetro.top_y=3;
 
 		if(id==RED){ //Z			
@@ -419,6 +403,7 @@ void replot_active_tetro(){
 	memset(temp_field, EMPTY, sizeof(temp_field));
 
 	if(active_tetro.dimensions==2){
+		// use tetro_dummy_2x2
 		for(int row=0; row<2; row++){
 			for(int cell=0; cell<2; cell++){
 				if(active_tetro.top_y+row<24 && active_tetro.left_x+cell<12){ //don't go off the grid
@@ -426,8 +411,6 @@ void replot_active_tetro(){
 				}
 			}
 		}
-		// use tetro_dummy_2x2
-		//tetro_dummy_2x2
 	}
 	else if (active_tetro.dimensions==4){
 		// use tetro_Dummy_4x4
@@ -441,15 +424,12 @@ void replot_active_tetro(){
 	}
 	else if (active_tetro.dimensions==3){
 		// use tetro_dummy_3x3
-		//printf("Active Tetro type: %d\n",active_tetro.type);
 		for(int row=0; row<3; row++){
 			for(int cell=0; cell<3; cell++){
 				if(active_tetro.top_y+row<24 && active_tetro.left_x+cell<12){ //don't go off the grid
 					temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_3x3[row][cell];
 				}
-				//printf("%d ",tetro_dummy_3x3[row][cell]);
 			}
-			//printf("\n");
 		}
 	}
 	else{
@@ -461,7 +441,7 @@ void replot_active_tetro(){
 void commit_tetro(){
 	// The active tetromino gets copied from the active tetromino array to the main field
 	// data structure to "set" it.
-	// THIS DOES NOT DO CHECKS to validate position!
+	// THIS DOES NOT DO CHECKS to validate position! Check it first with check_valid_state()
 
 	for(int row=0; row<24; row=row+1){
 		for(int cell=0; cell<12; cell=cell+1){
@@ -474,10 +454,11 @@ void commit_tetro(){
 }
 
 int check_valid_state(){
-	//Checks for overlapping tiles between active tetromino and field
-	//Returns 0 (false) if an overlap is found (state is invalid)
-	//Returns 1 (true) if an overlap is NOT found (state is valid)
-	//It does not undo it, it just determines if it's valid.
+	// Checks for overlapping tiles/blocks between the temp_field (the active tetromino) and
+	// the field (all other tetrominos and the edges of the screen).
+	// Returns 0 (false) if an overlap is found (state is invalid).
+	// Returns 1 (true) if an overlap is NOT found (state is valid).
+	// It does not undo it, it just determines if it's valid.
 
 	for(int row=0; row<24; row++){
 		for(int cell=0; cell<12; cell++){
@@ -508,7 +489,7 @@ void tetro_right(){
 }
 
 int tetro_fall(){
-	//RETURNS: whether this tetro is now set
+	//RETURNS: whether this tetro is now set.
 	// 1 - it is set, made a new tetro
 	// 0 - this tetro is still active
 	active_tetro.top_y += 1;
@@ -521,7 +502,6 @@ int tetro_fall(){
 		commit_tetro();
 		return 1;
 	}
-	//replot_active_tetro();
 }
 
 void hard_drop(){
@@ -551,7 +531,7 @@ int move_tetromino(){
 				move_timebuffer=10;
 			}
 			if(state->buttons & CONT_DPAD_DOWN){
-				tetro_fall();
+				tetro_fall(); // TODO - When the function is called from here, the code doesn't know whether the tetromino got set bc the return val isn't used!!!
 				move_timebuffer=10;
 			}
 			if(state->buttons & CONT_DPAD_LEFT){
@@ -669,18 +649,6 @@ int main(){
 	int exitProgram = 0;
 
 	init();
-	/*
-	field[8][5]=LIGHT_BLUE;
-	field[9][6]=DARK_BLUE;
-	field[3][0]=RED; //top-left
-	field[22][9]=PURPLE; //bottom-right
-	field[19][9]=RED;
-	field[20][9]=RED;
-	field[21][9]=RED;
-
-	field[3][5]=GREEN;
-	field[8][0]=YELLOW;
-	*/
 
 	printf("Hello world!\n");
 	printf("How are you today? :)\n");
@@ -698,6 +666,8 @@ int main(){
 		draw_frame();
 	}
 
+	maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
+	vmu_draw_lcd(vmu, vmu_clear);
 	pvr_shutdown();
 
 }
