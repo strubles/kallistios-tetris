@@ -8,6 +8,8 @@
 #include <plx/matrix.h>
 #include <plx/prim.h>
 
+#include <stdlib.h>
+
 #include "vmu_img.h"
 
 #define SCREEN_WIDTH 640
@@ -32,6 +34,23 @@ typedef struct Color {
 	uint8 g;
 	uint8 b;
 } color;
+
+typedef enum Rotation {
+	DEFAULT,
+	RIGHT,
+	TWO,
+	LEFT
+} rotation;
+
+typedef struct Tetrodata {
+	int top_y;
+	int left_x;
+	int bottom_y;
+	int right_x;
+	color_id type;
+	int dimensions;
+	rotation orientation;
+} tetrodata;
 
 int field_left = (SCREEN_WIDTH/2) - (FIELD_WIDTH/2);
 int field_right = (SCREEN_WIDTH/2) + (FIELD_WIDTH/2);
@@ -87,6 +106,14 @@ color_id tetro_dummy_2x2[2][2] = {0};
 int fall_timer = 200;
 
 int has_drawn_new_tetro = 0;
+/*
+int active_tetro_left;
+int active_tetro_top;
+int active_tetro_rotation;
+int active_tetro_x_offset;
+int active_tetro_y_offset;
+color_id active_tetro_type;
+*/
 
 color COLOR_RED = {255, 255, 0, 0};
 color COLOR_ORANGE = {255, 255, 128, 0};
@@ -108,11 +135,7 @@ KOS_INIT_FLAGS(INIT_DEFAULT);
 float position_x = SCREEN_WIDTH/2;
 float position_y = SCREEN_HEIGHT/2;
 
-int active_tetro_left;
-int active_tetro_top;
-int active_tetro_rotation;
-int active_tetro_x_offset;
-int active_tetro_y_offset;
+tetrodata active_tetro;
 
 /*
 void copy_tetro_array_x2(color_id *source, color_id *dest){
@@ -289,41 +312,139 @@ int check_buttons(){
 	return 0;
 }
 
-void init_i_tetro(){
-	for(int i=0; i<4; i++){
-		for(int j=0; j<4; j++){
-			tetro_dummy_4x4[i][j] = TETRO_I[i][j];
+void init_new_tetro(color_id id){
+
+	active_tetro.orientation=DEFAULT;
+	active_tetro.type=id;
+
+	if(id==LIGHT_BLUE){
+		// reset the I tetromino holder to its initial state
+		for(int i=0; i<4; i++){
+			for(int j=0; j<4; j++){
+				tetro_dummy_4x4[i][j] = TETRO_I[i][j];
+			}
+		}
+		//now configure the correct initial settings in the active tetro struct
+		active_tetro.left_x=3;
+		active_tetro.top_y=2 + 5;
+		active_tetro.dimensions=4;
+	}
+	else if(id==YELLOW){
+		for(int i=0; i<2; i++){
+			for(int j=0; j<2; j++){
+				tetro_dummy_2x2[i][j] = TETRO_O[i][j];
+			}
+		}
+
+		active_tetro.left_x = 4;
+		active_tetro.top_y=3 + 5;
+		active_tetro.dimensions=2;
+	}
+	else {
+		active_tetro.dimensions=3;
+		active_tetro.left_x=3;
+		active_tetro.top_y=3 + 5;
+
+		if(id==RED){ //Z			
+			for(int i=0; i<3; i++){
+				for(int j=0; j<2; j++){
+					tetro_dummy_3x3[i][j] = TETRO_Z[i][j];
+				}
+			}
+		}
+		else if(id==ORANGE){ //L
+			for(int i=0; i<3; i++){
+				for(int j=0; j<2; j++){
+					tetro_dummy_3x3[i][j] = TETRO_L[i][j];
+				}
+			}
+		}
+		else if(id==GREEN){ //S
+			for(int i=0; i<3; i++){
+				for(int j=0; j<2; j++){
+					tetro_dummy_3x3[i][j] = TETRO_S[i][j];
+				}
+			}
+		}
+
+		else if(id==DARK_BLUE){ //J
+			for(int i=0; i<3; i++){
+				for(int j=0; j<2; j++){
+					tetro_dummy_3x3[i][j] = TETRO_J[i][j];
+				}
+			}
+		}
+
+		else if(id==PURPLE){ //T
+			for(int i=0; i<3; i++){
+				for(int j=0; j<2; j++){
+					tetro_dummy_3x3[i][j] = TETRO_Z[i][j];
+				}
+			}
+		}
+
+		else{
+			printf("ERROR: invalid tetro id provided to init_tetro(): %d\n",id);
+			exit(1);
 		}
 	}
 }
 
-void add_tetro_to_temp_field(color_id id){
-	int arr_size;
+void replot_active_tetro(){
+	// Adds the current active_tetro to the temp field (using data from the
+	// associated tetro_dummy array)
 
-	if(id==3){
-		arr_size = 2; //O tetro
+	/*
+	typedef struct Tetrodata {
+	int top_y;
+	int left_x;
+	int bottom_y;
+	int right_x;
+	color_id type;
+	int dimensions;
+	rotation orientation;
+} tetrodata;
+*/
+	//temp_field={EMPTY}; //clear temp field (only 1 tetro is on it at a time)
+	memset(temp_field, EMPTY, sizeof(temp_field));
+
+	if(active_tetro.dimensions==2){
+		for(int row=0; row<2; row++){
+			for(int cell=0; cell<2; cell++){
+				temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_2x2[row][cell];
+			}
+		}
+		// use tetro_dummy_2x2
+		//tetro_dummy_2x2
 	}
-	else if(id==5){
-		arr_size = 4; //I tetro
-	}
-	else{
-		arr_size = 3; //all other tetros besides O and I use 3x3 (see tetro definitions)
-	}
-
-	int start_x;
-	int start_y;
-
-	if(id==1){
-		start_x=3;
-		start_y=3;
-
-		init_i_tetro();
-
-		for (int i=0; i<4; i++){
-			temp_field[3][start_y+i]=tetro_dummy_4x4[1][i];
+	else if (active_tetro.dimensions==4){
+		// use tetro_Dummy_4x4
+		for(int row=0; row<4; row++){
+			for(int cell=0; cell<4; cell++){
+				temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_4x4[row][cell];
+			}
 		}
 	}
-	printf("%d\n",tetro_dummy_2x2[1][0]);
+	else if (active_tetro.dimensions==3){
+		// use tetro_dummy_3x3
+		for(int row=0; row<3; row++){
+			for(int cell=0; cell<3; cell++){
+				temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_3x3[row][cell];
+			}
+		}
+	}
+	else{
+		printf("ERROR: replot_active_tetro() called with invalid dimension: %d\n",active_tetro.dimensions);
+		exit(1);
+	}
+}
+
+void generate_new_tetro(){
+	color_id random_id = (rand() % 7)+1;
+	printf("Random color: %d\n",random_id);
+
+	init_new_tetro(random_id);
+	replot_active_tetro();
 }
 
 void draw_field(){
@@ -366,6 +487,8 @@ void draw_field(){
 	}
 }
 
+//void move_active_tetro_downwards
+
 void draw_frame(){
 	check_buttons();
 
@@ -386,15 +509,18 @@ void draw_frame(){
 	draw_vert_line(100, SCREEN_HEIGHT-100, 100, COLOR_WHITE); // white - left
 
 	fall_timer=fall_timer-1;
-	printf("%d\n",fall_timer);
-	if(fall_timer<=0 && has_drawn_new_tetro==0){
+	//printf("%d\n",fall_timer);
+	if(fall_timer<=0){ //&& has_drawn_new_tetro==0){
 		fall_timer=200;
-		add_tetro_to_temp_field(1);
-		has_drawn_new_tetro=1;
+		//add_tetro_to_temp_field(1);
+		printf("Generating new tetro...\n");
+		generate_new_tetro();
+		
+		//has_drawn_new_tetro=1;
 	}
-	else if(fall_timer<=0 && has_drawn_new_tetro==1){
-		fall_timer=200;
-	}
+	//else if(fall_timer<=0 && has_drawn_new_tetro==1){
+	//	fall_timer=200;
+	//}
 
 	// (0,0) is located at top left
 
