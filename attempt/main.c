@@ -47,6 +47,7 @@ typedef struct Tetrodata {
 	color_id type;
 	int dimensions;
 	rotation orientation;
+	int set;
 } tetrodata;
 
 int field_left = (SCREEN_WIDTH/2) - (FIELD_WIDTH/2);
@@ -318,6 +319,7 @@ void init_new_tetro(color_id id){
 
 	active_tetro.orientation=DEFAULT;
 	active_tetro.type=id;
+	active_tetro.set=0;
 
 	if(id==LIGHT_BLUE){
 		// reset the I tetromino holder to its initial state
@@ -488,26 +490,27 @@ void tetro_right(){
 	}
 }
 
-int tetro_fall(){
+void tetro_fall(){
 	//RETURNS: whether this tetro is now set.
 	// 1 - it is set, made a new tetro
 	// 0 - this tetro is still active
 	active_tetro.top_y += 1;
 	replot_active_tetro();
-	if(check_valid_state()){
-		return 0;
-	} else { //not valid
+	//if(check_valid_state()){
+	//	return 0;
+	//} else { //not valid
+	if(!check_valid_state()){
 		active_tetro.top_y -= 1; //undo it
 		replot_active_tetro();
 		commit_tetro();
-		return 1;
+		active_tetro.set=1;
 	}
 }
 
 void hard_drop(){
-	int tetro_is_set=0;
-	while(!tetro_is_set){
-		tetro_is_set = tetro_fall();
+	//int tetro_is_set=0;
+	while(!active_tetro.set){
+		tetro_fall();
 	}
 }
 
@@ -601,7 +604,7 @@ void draw_field(){
 //void move_active_tetro_downwards
 
 int fall_timer = 60;
-int tetro_set = 1;
+int first_run=1;
 
 void draw_frame(){
 
@@ -610,15 +613,16 @@ void draw_frame(){
 
 	fall_timer=fall_timer-1;
 
-	if(tetro_set==1){
+	if(active_tetro.set==1 || first_run==1){
 		generate_new_tetro();
+		fall_timer=60;
+		first_run=0;
 		//printf("Generating new tetro...");
-		tetro_set=0;
 	}
 
 	if(fall_timer<=0){
 		fall_timer=60;
-		tetro_set = tetro_fall();
+		tetro_fall();
 	}
 
 
