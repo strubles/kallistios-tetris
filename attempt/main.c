@@ -520,6 +520,29 @@ void hard_drop(){
 
 // https://stackoverflow.com/questions/27288694/transpose-of-a-matrix-2d-array
 
+void print_tetro_array(){
+	int n = active_tetro.dimensions;
+
+	color_id (*arr_ptr)[n][n];
+
+	if(n==3){
+		arr_ptr = &(tetro_dummy_3x3);
+	}
+	else if(n==4){
+		arr_ptr = &(tetro_dummy_4x4);
+	}
+	else if(n==2){
+		arr_ptr = &(tetro_dummy_2x2);
+	}
+
+	for(int i=0; i<n; i++){
+		for(int j=0; j<n; j++){
+			printf("%d",(*arr_ptr)[i][j]);
+		}
+	printf("\n");
+	}
+
+}
 
 void swap(color_id* arg1, color_id* arg2)
 {
@@ -549,10 +572,10 @@ void reverse_active_tetro_row(int row){
 	color_id (*arr_ptr)[n];
 
 	if(n==3){
-		arr_ptr = &(tetro_dummy_3x3[n]);
+		arr_ptr = &(tetro_dummy_3x3[row]);
 	}
 	else if(n==4){
-		arr_ptr = &(tetro_dummy_4x4[n]);
+		arr_ptr = &(tetro_dummy_4x4[row]);
 	}
 	else{
 		printf("ERROR: reverse_active_tetro_row called with an array size other than 3 or 4: %d\n",n);
@@ -566,10 +589,13 @@ void reverse_active_tetro_row(int row){
 	}
 }
 
-void rotate_tetro_counterclockwise();
+void rotate_tetro_counterclockwise(); // tell compiler that this function will exist so it doesnt get mad when I call it before i define it.
 
 void rotate_tetro_clockwise(){
 	printf("Rotate CW called\n");
+	printf("Array before CW:\n");
+	print_tetro_array();
+
 	if(active_tetro.dimensions==2){
 		return;
 	}
@@ -586,10 +612,15 @@ void rotate_tetro_clockwise(){
 		rotate_tetro_counterclockwise();
 		replot_active_tetro();
 	}
+	printf("Array after CW:\n");
+	print_tetro_array();
 }
 
 void rotate_tetro_counterclockwise(){
 	printf("Rotate CCW called\n");
+	printf("Array before CCW:\n");
+	print_tetro_array();
+
 	if(active_tetro.dimensions==2){
 		return;
 	}
@@ -604,6 +635,9 @@ void rotate_tetro_counterclockwise(){
 		rotate_tetro_clockwise();
 		replot_active_tetro();
 	}
+
+	printf("Array after CCW:\n");
+	print_tetro_array();
 }
 
 
