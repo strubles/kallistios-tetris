@@ -104,6 +104,9 @@ color_id tetro_dummy_4x4[4][4] = {0};
 color_id tetro_dummy_3x3[3][3] = {0};
 color_id tetro_dummy_2x2[2][2] = {0};
 
+color_id temp_4x4;
+color_id temp_3x3;
+
 int has_drawn_new_tetro = 0;
 
 color COLOR_RED = {255, 255, 0, 0};
@@ -514,9 +517,104 @@ void hard_drop(){
 	}
 }
 
+
+// https://stackoverflow.com/questions/27288694/transpose-of-a-matrix-2d-array
+
+
+void swap(color_id* arg1, color_id* arg2)
+{
+    color_id buffer = *arg1;
+    *arg1 = *arg2;
+    *arg2 = buffer;
+}
+
+void transpose_active_tetro(){
+	int n = active_tetro.dimensions;
+	for( int i = 0; i < n; i++)
+	{
+		for ( int j = i+1; j < n; j++ ) // only the upper is iterated
+		{
+			if(active_tetro.dimensions==3){
+				swap(&(tetro_dummy_3x3[i][j]), &(tetro_dummy_3x3[j][i]));}
+			else if(active_tetro.dimensions==4){
+				swap(&(tetro_dummy_4x4[i][j]), &(tetro_dummy_4x4[j][i]));}
+		}
+	}
+}
+
+
+void reverse_active_tetro_row(int row){
+	int n = active_tetro.dimensions;
+
+	color_id (*arr_ptr)[n];
+
+	if(n==3){
+		arr_ptr = &(tetro_dummy_3x3[n]);
+	}
+	else if(n==4){
+		arr_ptr = &(tetro_dummy_4x4[n]);
+	}
+	else{
+		printf("ERROR: reverse_active_tetro_row called with an array size other than 3 or 4: %d\n",n);
+	}
+
+	for(int i = 0; i<n/2; i++)
+	{
+		int temp = (*arr_ptr)[i];
+		(*arr_ptr)[i] = (*arr_ptr)[n-i-1];
+		(*arr_ptr)[n-i-1] = temp;        
+	}
+}
+
+void rotate_tetro_counterclockwise();
+
+void rotate_tetro_clockwise(){
+	printf("Rotate CW called\n");
+	if(active_tetro.dimensions==2){
+		return;
+	}
+	// 1. Transpose
+	transpose_active_tetro();
+
+	// 2. Reverse each row
+	for(int i=0; i<active_tetro.dimensions; i++){
+		reverse_active_tetro_row(i);
+	}
+
+	replot_active_tetro();
+	if(!check_valid_state()){
+		rotate_tetro_counterclockwise();
+		replot_active_tetro();
+	}
+}
+
+void rotate_tetro_counterclockwise(){
+	printf("Rotate CCW called\n");
+	if(active_tetro.dimensions==2){
+		return;
+	}
+
+	for(int i=0; i<active_tetro.dimensions; i++){
+		reverse_active_tetro_row(i);
+	}
+	transpose_active_tetro();
+
+	replot_active_tetro();
+	if(!check_valid_state()){
+		rotate_tetro_clockwise();
+		replot_active_tetro();
+	}
+}
+
+
 int move_timebuffer = 10;
+int released_y_button=1;
+int released_x_button=1;
 
 int move_tetromino(){
+
+	// https://cadcdev.sourceforge.net/docs/kos-2.0.0/group__controller__buttons.html
+
 	maple_device_t *cont;
     cont_state_t *state;
 
@@ -545,6 +643,22 @@ int move_tetromino(){
 				tetro_right();
 				move_timebuffer=10;
 			}
+			
+			if( (state->buttons & CONT_Y) && released_y_button){
+				rotate_tetro_clockwise();
+				released_y_button=0;
+			}
+			if( (state->buttons & CONT_X) && released_x_button){
+				rotate_tetro_counterclockwise();
+				released_x_button=0;
+			}
+			if( !(state->buttons & CONT_X) && !released_x_button){
+				released_x_button=1;
+			}
+			if( !(state->buttons & CONT_Y) && !released_y_button){
+				released_y_button=1;
+			}
+			
 		}
 		if(move_timebuffer>0){
 			move_timebuffer-=1;
