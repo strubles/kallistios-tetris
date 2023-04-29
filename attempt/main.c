@@ -160,6 +160,8 @@ color_id tetro_dummy_2x2[2][2] = {0};
 
 int has_drawn_new_tetro = 0;
 
+int line_clears = 0;
+
 color COLOR_RED = {255, 255, 0, 0};
 color COLOR_ORANGE = {255, 255, 174, 94};
 color COLOR_YELLOW = {255, 255, 255, 0};
@@ -798,7 +800,7 @@ int move_tetromino(){
 				move_timebuffer=10;
 			}
 			if(state->buttons & CONT_DPAD_DOWN){
-				tetro_fall(); // TODO - When the function is called from here, the code doesn't know whether the tetromino got set bc the return val isn't used!!!
+				tetro_fall();
 				move_timebuffer=10;
 			}
 			if(state->buttons & CONT_DPAD_LEFT){
@@ -881,6 +883,46 @@ void draw_field(){
 	}
 }
 
+void clear_line(int rownum){
+	// Copy every line above the cleared line down 1 row
+	for(int row=rownum; row>=4; row--){
+		for(int cell=1; cell<=10; cell++){
+			field[row][cell] = field[row-1][cell];
+		}
+	}
+
+	field[3][0]=1;
+	for(int cell=1; cell<=10; cell++){
+		field[3][cell]=0;
+	}
+	field[3][11]=1;
+}
+
+void check_lines(){
+	//printf("Checking lines...\n");
+	int found_empty_tile=0;
+
+	for(int row=3; row<=22; row++){
+		int cell=1;
+		while(cell<=10 && !found_empty_tile){
+			//printf("%d ", field[row][cell]);
+			if(!field[row][cell]){
+				found_empty_tile=1;
+			}
+			cell++;
+			//printf("Row: %d Cell: %d\n",row, cell);
+		}
+		//printf("\n");
+		if(!found_empty_tile){
+			//printf("Found full line: %d\n",row);
+			clear_line(row);
+			line_clears++;
+			printf("Total line clears: %d\n",line_clears);
+		}
+		found_empty_tile=0;
+	}
+}
+
 //void move_active_tetro_downwards
 
 int fall_timer = 60;
@@ -894,6 +936,7 @@ void draw_frame(){
 	fall_timer=fall_timer-1;
 
 	if(active_tetro.set==1 || first_run==1){
+		check_lines();
 		generate_new_tetro();
 		fall_timer=60;
 		first_run=0;
