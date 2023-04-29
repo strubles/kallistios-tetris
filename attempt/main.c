@@ -2,14 +2,18 @@
 
 // resolution is 640w x 480h
 
+// FOR FONTS: REFER TO:
+// C:\Data\kos-examples\parallax\font\font.c
+
 #include <kos.h>
 
-#include <plx/matrix.h>
-#include <plx/prim.h>
+//#include <plx/matrix.h>
+//#include <plx/prim.h>
 
 #include <stdlib.h>
 
 #include "vmu_img.h"
+#include "display.c"
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
@@ -34,336 +38,43 @@
 // Fourth level: x, y offset
 int rotation_tests_cw[6][4][5][2] =
 {
-	// 1 (red) tests (Z)
-	{
-		// 0 to R
-		{
-			// {x, y}
-			// Test 2
-			{-1,0},
-			// Test 3
-			{0,-1},
-			// Test 4
-			{1,3},
-			// Test 5
-			{-1,0},
-			//Undo
-			{1,-2}
-		},
-		// R to 2
-		{
-			// Test 2
-			{1,0},
-			// Test 3
-			{0,1},
-			// Test 4
-			{-1,-3},
-			// Test 5
-			{1,0},
-			//Undo
-			{-1,2}
-		},
-		// 2 to L
-		{
-			// Test 2
-			{1,0},
-			// Test 3
-			{0,-1},
-			// Test 4
-			{-1,3},
-			// Test 5
-			{1,0},
-			//Undo
-			{-1,-2}
-		},
-		// L to 0
-		{
-			// Test 2
-			{-1,0},
-			// Test 3
-			{0,1},
-			// Test 4
-			{1,-3},
-			// Test 5
-			{-1,0},
-			//Undo
-			{1,2}
-		}
+	{ // 1 (red) tests (Z)
+	// Test matrix 0: Red/Z, Green/S, Orange/L, Dark Blue/J, Purple/T
+		 // Test 2, 3, 4, 5, and undo.
+		{ {-1,0}, {0,-1}, {1,3}, {-1,0}, {1,-2} }, // 0 to R
+		{ {1,0}, {0,1}, {-1,-3}, {1,0}, {-1,2} }, // R to 2
+		{ {1,0}, {0,-1}, {-1,3}, {1,0}, {-1,-2} }, // 2 to L
+		{ {-1,0}, {0,1}, {1,-3}, {-1,0}, {1,2} } // L to 0
 	},
-	// 2 (orange) tests (L)
-	{
-		// 0 to R
-		{
-			// Test 2
-			{-1,0},
-			// Test 3
-			{0,-1},
-			// Test 4
-			{1,3},
-			// Test 5
-			{-1,0},
-			//Undo
-			{1,-2}
-		},
-		// R to 2
-		{
-			// Test 2
-			{1,0},
-			// Test 3
-			{0,1},
-			// Test 4
-			{-1,-3},
-			// Test 5
-			{1,0},
-			//Undo
-			{-1,2}
-		},
-		// 2 to L
-		{
-			// Test 2
-			{1,0},
-			// Test 3
-			{0,-1},
-			// Test 4
-			{-1,3},
-			// Test 5
-			{1,0},
-			//Undo
-			{-1,-2}
-		},
-		// L to 0
-		{
-			// Test 2
-			{-1,0},
-			// Test 3
-			{0,1},
-			// Test 4
-			{1,-3},
-			// Test 5
-			{-1,0},
-			//Undo
-			{1,2}
-		}
+	{ // 2 (orange) tests (L)
+		{ {-1,0}, {0,-1}, {1,3}, {-1,0}, {1,-2} }, // 0 to R
+		{ {1,0}, {0,1}, {-1,-3}, {1,0}, {-1,2} }, // R to 2
+		{ {1,0}, {0,-1}, {-1,3}, {1,0}, {-1,-2} }, // 2 to L
+		{ {-1,0}, {0,1}, {1,-3}, {-1,0}, {1,2} } // L to 0
 	},
-	// 4 (green) tests (S)
-	{
-		// 0 to R
-		{
-			// Test 2
-			{-1,0},
-			// Test 3
-			{0,-1},
-			// Test 4
-			{1,3},
-			// Test 5
-			{-1,0},
-			//Undo
-			{1,-2}
-		},
-		// R to 2
-		{
-			// Test 2
-			{1,0},
-			// Test 3
-			{0,1},
-			// Test 4
-			{-1,-3},
-			// Test 5
-			{1,0},
-			//Undo
-			{-1,2}
-		},
-		// 2 to L
-		{
-			// Test 2
-			{1,0},
-			// Test 3
-			{0,-1},
-			// Test 4
-			{-1,3},
-			// Test 5
-			{1,0},
-			//Undo
-			{-1,-2}
-		},
-		// L to 0
-		{
-			// Test 2
-			{-1,0},
-			// Test 3
-			{0,1},
-			// Test 4
-			{1,-3},
-			// Test 5
-			{-1,0},
-			//Undo
-			{1,2}
-		}
+	{ // 4 (green) tests (S)
+		{ {-1,0}, {0,-1}, {1,3}, {-1,0}, {1,-2} }, // 0 to R
+		{ {1,0}, {0,1}, {-1,-3}, {1,0}, {-1,2} }, // R to 2
+		{ {1,0}, {0,-1}, {-1,3}, {1,0}, {-1,-2} }, // 2 to L
+		{ {-1,0}, {0,1}, {1,-3}, {-1,0}, {1,2} } // L to 0
 	},
-	// 5 (light blue) tests (I)
-	{
-		// 0 to R
-		{
-			// Test 2
-			{-2,0},
-			// Test 3
-			{3,0},
-			// Test 4
-			{-3,1},
-			// Test 5
-			{3,-3},
-			//Undo
-			{-1,2}
-		},
-		// R to 2
-		{
-			// Test 2
-			{-1,0},
-			// Test 3
-			{3,0},
-			// Test 4
-			{-3,-2},
-			// Test 5
-			{3,3},
-			//Undo
-			{-2,-1}
-		},
-		// 2 to L
-		{
-			// Test 2
-			{2,0},
-			// Test 3
-			{-3,0},
-			// Test 4
-			{3,-1},
-			// Test 5
-			{-3,3},
-			//Undo
-			{1,-2}
-		},
-		// L to 0
-		{
-			// Test 2
-			{1,0},
-			// Test 3
-			{-3,0},
-			// Test 4
-			{3,2},
-			// Test 5
-			{-3,-3},
-			//Undo
-			{2,1}
-		}
+	{ // 5 (light blue) tests (I)
+		{ {-2,0}, {3,0}, {-3,1}, {3,-3}, {-1,2} }, // 0 to R
+		{ {-1,0}, {3,0}, {-3,-2}, {3,3}, {-2,-1} }, // R to 2
+		{ {2,0}, {-3,0}, {3,-1}, {-3,3}, {1,-2} }, // 2 to L
+		{ {1,0}, {-3,0}, {3,2}, {-3,-3}, {2,1} } // L to 0
 	},
-	// 6 (dark blue) tests (J)
-	{
-		// 0 to R
-		{
-			// Test 2
-			{-1,0},
-			// Test 3
-			{0,-1},
-			// Test 4
-			{1,3},
-			// Test 5
-			{-1,0},
-			//Undo
-			{1,-2}
-		},
-		// R to 2
-		{
-			// Test 2
-			{0,0},
-			// Test 3
-			{1,1},
-			// Test 4
-			{-1,-3},
-			// Test 5
-			{1,0},
-			//Undo
-			{-1,2}
-		},
-		// 2 to L
-		{
-			// Test 2
-			{1,0},
-			// Test 3
-			{0,-1},
-			// Test 4
-			{-1,3},
-			// Test 5
-			{1,0},
-			//Undo
-			{-1,-2}
-		},
-		// L to 0
-		{
-			// Test 2
-			{-1,0},
-			// Test 3
-			{0,1},
-			// Test 4
-			{1,-3},
-			// Test 5
-			{-1,0},
-			//Undo
-			{1,2}
-		}
+	{ // 6 (dark blue) tests (J)
+		{ {-1,0}, {0,-1}, {1,3}, {-1,0}, {1,-2} }, // 0 to R
+		{ {0,0}, {1,1}, {-1,-3}, {1,0}, {-1,2} }, // R to 2
+		{ {1,0}, {0,-1}, {-1,3}, {1,0}, {-1,-2} }, // 2 to L
+		{ {-1,0}, {0,1}, {1,-3}, {-1,0}, {1,2} } // L to 0
 	},
-	// 7 (purple) tests (T)
-	{
-		// 0 to R
-		{
-			// Test 2
-			{-1,0},
-			// Test 3
-			{0,-1},
-			// Test 4
-			{1,3},
-			// Test 5
-			{-1,0},
-			//Undo
-			{1,-2}
-		},
-		// R to 2
-		{
-			// Test 2
-			{1,0},
-			// Test 3
-			{0,1},
-			// Test 4
-			{-1,-3},
-			// Test 5
-			{1,0},
-			//Undo
-			{-1,2}
-		},
-		// 2 to L
-		{
-			// Test 2
-			{1,0},
-			// Test 3
-			{0,-1},
-			// Test 4
-			{-1,3},
-			// Test 5
-			{1,0},
-			//Undo
-			{-1,-2}
-		},
-		// L to 0
-		{
-			// Test 2
-			{-1,0},
-			// Test 3
-			{0,1},
-			// Test 4
-			{1,-3},
-			// Test 5
-			{-1,0},
-			//Undo
-			{1,2}
-		}
+	{ // 7 (purple) tests (T)
+		{ {-1,0}, {0,-1}, {1,3}, {-1,0}, {1,-2} }, // 0 to R
+		{ {1,0}, {0,1}, {-1,-3}, {1,0}, {-1,2} }, // R to 2
+		{ {1,0}, {0,-1}, {-1,3}, {1,0}, {-1,-2} }, // 2 to L
+		{ {-1,0}, {0,1}, {1,-3}, {-1,0}, {1,2} } // L to 0
 	},
 };
 
@@ -959,6 +670,13 @@ void update_orientation_cw(){
 	}
 }
 
+void update_orientation_ccw(){
+	active_tetro.orientation--;
+	if(active_tetro.orientation<0){
+		active_tetro.orientation=3;
+	}
+}
+
 void move_tetro_like_this(int x, int y){
 	active_tetro.left_x+=x;
 	active_tetro.top_y+=y;
@@ -997,19 +715,19 @@ void rotate_tetro_clockwise(){
 
 	// iterate through each test
 	for (int test_index=0; test_index<=3; test_index++){
-		printf("Running rotation test: %d\n",test_index);
+		//printf("Running rotation test: %d\n",test_index);
 		move_tetro_like_this(rotation_tests_cw[active_tetro.tetro_index][rotation_type_index][test_index][0],
 							 rotation_tests_cw[active_tetro.tetro_index][rotation_type_index][test_index][1]);
 		replot_active_tetro();
 
 		if(check_valid_state()){
-			printf("This rotation test worked!\n");
+			//printf("This rotation test worked!\n");
 			return;
 		}
 	}
 
 	//Never found a valid one, undo
-	printf("Never found a valid rotation, undoing it\n");
+	//printf("Never found a valid rotation, undoing it\n");
 	move_tetro_like_this(rotation_tests_cw[active_tetro.tetro_index][rotation_type_index][4][0],
 						 rotation_tests_cw[active_tetro.tetro_index][rotation_type_index][4][1]);
 	rotate_tetro_counterclockwise();
