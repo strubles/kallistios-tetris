@@ -22,8 +22,7 @@
 
 // When a tetromino is rotated, Tetris does a series of tests to find a valid (open) position to rotate the tetromino into.
 // The tests are done in order and the first test that succeeds determines where the tetromino is placed.
-// The tests are all very specific and are ALL different for every individual tetromino and every starting orientation for each tetromino
-// which is why this is so goddamn long.
+// The test sets for Z, S, L, J, and T are all the same, but I has its own (O doesn't have one cause it doesn't rotate).
 // If they all fail, the rotation is cancelled.
 // The first test is a simple in place 90 degree rotation.
 // Tests 2-5 involve nudging the tetromino left, right, up, and down by a block or two to find a free spot.
@@ -36,46 +35,37 @@
 // Second level: the rotation type
 // Third level: the test number
 // Fourth level: x, y offset
-int rotation_tests_cw[6][4][5][2] =
+int rotation_tests_cw[2][4][5][2] =
 {
-	{ // 1 (red) tests (Z)
-	// Test matrix 0: Red/Z, Green/S, Orange/L, Dark Blue/J, Purple/T
-		 // Test 2, 3, 4, 5, and undo.
+	{ // This test matrix applies to Red/Z, Green/S, Orange/L, Dark Blue/J, Purple/T tetros. (Everything but Light Blue/I )
+		// Test 2, 3, 4, 5, and undo.
 		{ {-1,0}, {0,-1}, {1,3}, {-1,0}, {1,-2} }, // 0 to R
 		{ {1,0}, {0,1}, {-1,-3}, {1,0}, {-1,2} }, // R to 2
 		{ {1,0}, {0,-1}, {-1,3}, {1,0}, {-1,-2} }, // 2 to L
 		{ {-1,0}, {0,1}, {1,-3}, {-1,0}, {1,2} } // L to 0
 	},
-	{ // 2 (orange) tests (L)
-		{ {-1,0}, {0,-1}, {1,3}, {-1,0}, {1,-2} }, // 0 to R
-		{ {1,0}, {0,1}, {-1,-3}, {1,0}, {-1,2} }, // R to 2
-		{ {1,0}, {0,-1}, {-1,3}, {1,0}, {-1,-2} }, // 2 to L
-		{ {-1,0}, {0,1}, {1,-3}, {-1,0}, {1,2} } // L to 0
-	},
-	{ // 4 (green) tests (S)
-		{ {-1,0}, {0,-1}, {1,3}, {-1,0}, {1,-2} }, // 0 to R
-		{ {1,0}, {0,1}, {-1,-3}, {1,0}, {-1,2} }, // R to 2
-		{ {1,0}, {0,-1}, {-1,3}, {1,0}, {-1,-2} }, // 2 to L
-		{ {-1,0}, {0,1}, {1,-3}, {-1,0}, {1,2} } // L to 0
-	},
-	{ // 5 (light blue) tests (I)
+	{ // This test matrix applies only to Light Blue/I tetrominos
 		{ {-2,0}, {3,0}, {-3,1}, {3,-3}, {-1,2} }, // 0 to R
 		{ {-1,0}, {3,0}, {-3,-2}, {3,3}, {-2,-1} }, // R to 2
 		{ {2,0}, {-3,0}, {3,-1}, {-3,3}, {1,-2} }, // 2 to L
 		{ {1,0}, {-3,0}, {3,2}, {-3,-3}, {2,1} } // L to 0
 	},
-	{ // 6 (dark blue) tests (J)
-		{ {-1,0}, {0,-1}, {1,3}, {-1,0}, {1,-2} }, // 0 to R
-		{ {0,0}, {1,1}, {-1,-3}, {1,0}, {-1,2} }, // R to 2
-		{ {1,0}, {0,-1}, {-1,3}, {1,0}, {-1,-2} }, // 2 to L
-		{ {-1,0}, {0,1}, {1,-3}, {-1,0}, {1,2} } // L to 0
+};
+
+int rotation_tests_ccw[2][4][5][2] =
+{
+	{ //J, L, S, T, Z
+		{ {1, 0}, {0, -1}, {-1,3}, {1,0}, {-1,-2} }, //0 to L
+		{ {1, 0}, {0, 1}, {-1,-3}, {1,0}, {-1,2} }, // R to 0
+		{ {-1, 0}, {0, -1}, {1, 3}, {-1, 0}, {1,-2} }, //2 to R
+		{ {-1, 0}, {0, 1}, {1,-3}, {-1,0}, {1,2} } //L to 2
 	},
-	{ // 7 (purple) tests (T)
-		{ {-1,0}, {0,-1}, {1,3}, {-1,0}, {1,-2} }, // 0 to R
-		{ {1,0}, {0,1}, {-1,-3}, {1,0}, {-1,2} }, // R to 2
-		{ {1,0}, {0,-1}, {-1,3}, {1,0}, {-1,-2} }, // 2 to L
-		{ {-1,0}, {0,1}, {1,-3}, {-1,0}, {1,2} } // L to 0
-	},
+	{ //Light Blue
+		{ {-1, 0}, {3, 0}, {-3,-2}, {3,-3}, {-2,-1} }, //0 to L
+		{ {2, 0}, {-3, 0}, {3,-1}, {-3,3}, {1,-2} }, // R to 0
+		{ {1, 0}, {-3, 0}, {3, 2}, {-3,-3}, {2,1} }, //2 to R
+		{ {-2, 0}, {3, 0}, {-3, 1}, {3, -3}, {-1,2} } //L to 2
+	}
 };
 
 typedef enum Color_Id {
@@ -396,7 +386,7 @@ void init_new_tetro(color_id id){
 		active_tetro.left_x=4;
 		active_tetro.top_y=2;
 		active_tetro.dimensions=4;
-		active_tetro.tetro_index=3;
+		active_tetro.tetro_index=1;
 	}
 	else if(id==YELLOW){
 		for(int i=0; i<2; i++){
@@ -429,7 +419,7 @@ void init_new_tetro(color_id id){
 					tetro_dummy_3x3[i][j] = TETRO_L[i][j];
 				}
 			}
-			active_tetro.tetro_index=1;
+			active_tetro.tetro_index=0;
 		}
 		else if(id==GREEN){ //S
 			for(int i=0; i<3; i++){
@@ -437,7 +427,7 @@ void init_new_tetro(color_id id){
 					tetro_dummy_3x3[i][j] = TETRO_S[i][j];
 				}
 			}
-			active_tetro.tetro_index=2;
+			active_tetro.tetro_index=0;
 		}
 
 		else if(id==DARK_BLUE){ //J
@@ -446,7 +436,7 @@ void init_new_tetro(color_id id){
 					tetro_dummy_3x3[i][j] = TETRO_J[i][j];
 				}
 			}
-			active_tetro.tetro_index=4;
+			active_tetro.tetro_index=0;
 		}
 
 		else if(id==PURPLE){ //T
@@ -458,7 +448,7 @@ void init_new_tetro(color_id id){
 				}
 				//printf("\n");
 			}
-			active_tetro.tetro_index=5;
+			active_tetro.tetro_index=0;
 		}
 
 		else{
@@ -727,6 +717,7 @@ void rotate_tetro_clockwise(){
 	}
 
 	//Never found a valid one, undo
+	// (The 4th index in the rotation test inner array is movement instructions to get back to the original location)
 	//printf("Never found a valid rotation, undoing it\n");
 	move_tetro_like_this(rotation_tests_cw[active_tetro.tetro_index][rotation_type_index][4][0],
 						 rotation_tests_cw[active_tetro.tetro_index][rotation_type_index][4][1]);
@@ -744,6 +735,8 @@ void rotate_tetro_counterclockwise(){
 		return;
 	}
 
+	// Test 1 - plain rotation, no offset
+
 	// 1. Reverse each row
 	for(int i=0; i<active_tetro.dimensions; i++){
 		reverse_active_tetro_row(i);
@@ -752,16 +745,28 @@ void rotate_tetro_counterclockwise(){
 	transpose_active_tetro();
 
 	replot_active_tetro();
+
 	if(check_valid_state()){
-		active_tetro.orientation--;
-		if(active_tetro.orientation<0){
-			active_tetro.orientation=3;
+		update_orientation_ccw();
+		return;
+	}
+	
+	// Iterate through each test
+	for (int test_index=0; test_index<=3; test_index++){
+		move_tetro_like_this(rotation_tests_ccw[active_tetro.tetro_index][active_tetro.orientation][test_index][0],
+							 rotation_tests_ccw[active_tetro.tetro_index][active_tetro.orientation][test_index][1]);
+		replot_active_tetro();
+
+		if(check_valid_state()){
+			return;
 		}
 	}
-	else{
-		rotate_tetro_clockwise();
-		replot_active_tetro();
-	}
+
+	//Never found a valid one, undo
+	move_tetro_like_this(rotation_tests_cw[active_tetro.tetro_index][active_tetro.orientation][4][0],
+						 rotation_tests_cw[active_tetro.tetro_index][active_tetro.orientation][4][1]);
+	rotate_tetro_clockwise();
+	replot_active_tetro();
 
 	//printf("Array after CCW:\n");
 	//print_tetro_array();
