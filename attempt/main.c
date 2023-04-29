@@ -56,7 +56,7 @@ int field_top = (SCREEN_HEIGHT/2) - (FIELD_HEIGHT/2);
 int field_bottom = (SCREEN_HEIGHT/2) + (FIELD_HEIGHT/2);
 
 // Arrays representing what each tetromino looks like.
-// These are intended to be read-only.
+// These are intended to be read-only and are copied over to the dummy arrays
 color_id TETRO_Z[3][3] = {
 	{ 1, 1, 0 },
 	{ 0, 1, 1 },
@@ -104,8 +104,6 @@ color_id tetro_dummy_4x4[4][4] = {0};
 color_id tetro_dummy_3x3[3][3] = {0};
 color_id tetro_dummy_2x2[2][2] = {0};
 
-color_id temp_4x4;
-color_id temp_3x3;
 
 int has_drawn_new_tetro = 0;
 
@@ -479,7 +477,7 @@ void tetro_left(){
 	active_tetro.left_x -= 1;
 	replot_active_tetro();
 	if(!check_valid_state()){
-		active_tetro.left_x += 1;
+		active_tetro.left_x += 1; //undo it
 		replot_active_tetro();
 	}
 }
@@ -488,20 +486,14 @@ void tetro_right(){
 	active_tetro.left_x += 1;
 	replot_active_tetro();
 	if(!check_valid_state()){
-		active_tetro.left_x -= 1;
+		active_tetro.left_x -= 1; //undo it
 		replot_active_tetro();
 	}
 }
 
 void tetro_fall(){
-	//RETURNS: whether this tetro is now set.
-	// 1 - it is set, made a new tetro
-	// 0 - this tetro is still active
 	active_tetro.top_y += 1;
 	replot_active_tetro();
-	//if(check_valid_state()){
-	//	return 0;
-	//} else { //not valid
 	if(!check_valid_state()){
 		active_tetro.top_y -= 1; //undo it
 		replot_active_tetro();
@@ -511,12 +503,11 @@ void tetro_fall(){
 }
 
 void hard_drop(){
-	//int tetro_is_set=0;
+	// Falls straight down until the tetromino gets set
 	while(!active_tetro.set){
 		tetro_fall();
 	}
 }
-
 
 // https://stackoverflow.com/questions/27288694/transpose-of-a-matrix-2d-array
 
@@ -545,6 +536,8 @@ void print_tetro_array(){
 }
 
 void swap(color_id* arg1, color_id* arg2)
+// Swap the two values in memory (in place)
+// Used in tetromino rotation
 {
     color_id buffer = *arg1;
     *arg1 = *arg2;
@@ -552,6 +545,9 @@ void swap(color_id* arg1, color_id* arg2)
 }
 
 void transpose_active_tetro(){
+	// Flips the array of the active tetromino along the diagonal (in place)
+	// This is one of the steps in tetromino rotation
+
 	int n = active_tetro.dimensions;
 	for( int i = 0; i < n; i++)
 	{
@@ -567,20 +563,25 @@ void transpose_active_tetro(){
 
 
 void reverse_active_tetro_row(int row){
+	// Reverse the given row in the active tetromino array (in place)
+	// This is one of the steps in tetromino rotation
+
 	int n = active_tetro.dimensions;
 
-	color_id (*arr_ptr)[n];
+	color_id (*arr_ptr)[n]; //pointer to this row in memory
 
 	if(n==3){
-		arr_ptr = &(tetro_dummy_3x3[row]);
+		arr_ptr = &(tetro_dummy_3x3[row]); //point to the row in the 3x3 array
 	}
 	else if(n==4){
-		arr_ptr = &(tetro_dummy_4x4[row]);
+		arr_ptr = &(tetro_dummy_4x4[row]); //point to the row in the 4x4 array
 	}
 	else{
 		printf("ERROR: reverse_active_tetro_row called with an array size other than 3 or 4: %d\n",n);
+		exit(1);
 	}
 
+	// Reverse the row in the relevant array
 	for(int i = 0; i<n/2; i++)
 	{
 		int temp = (*arr_ptr)[i];
@@ -589,16 +590,31 @@ void reverse_active_tetro_row(int row){
 	}
 }
 
-void rotate_tetro_counterclockwise(); // tell compiler that this function will exist so it doesnt get mad when I call it before i define it.
+void rotate_tetro_counterclockwise();
+// ^ tell compiler that this function will exist so it doesnt get mad when I call it before i define it.
+
+void update_orientation_cw(){
+	active_tetro.orientation++;
+	if(active_tetro.orientation>3){
+		active_tetro.orientation=0;
+	}
+}
+
+
+// Tetromino rotation test cases taken from here:
+// https://www.reddit.com/r/Tetris/comments/bdu02w/i_made_some_srs_charts/
 
 void rotate_tetro_clockwise(){
-	printf("Rotate CW called\n");
-	printf("Array before CW:\n");
-	print_tetro_array();
+	//printf("Rotate CW called\n");
+	//printf("Array before CW:\n");
+	//print_tetro_array();
 
 	if(active_tetro.dimensions==2){
 		return;
 	}
+
+	//test 1 - plain rotation, no offset
+
 	// 1. Transpose
 	transpose_active_tetro();
 
@@ -608,36 +624,971 @@ void rotate_tetro_clockwise(){
 	}
 
 	replot_active_tetro();
+
+	if(check_valid_state()){
+		update_orientation_cw();
+		return;
+	}
+
+	if(active_tetro.type==LIGHT_BLUE){ // I tetromino
+		if(active_tetro.orientation==DEFAULT){ // 0 to R
+			//test 2: offset left 2 blocks
+			active_tetro.left_x-=2;
+			replot_active_tetro();
+
+			if(check_valid_state()){ //test 2 succeeded
+				update_orientation_cw();
+				return;
+			}
+
+			//test 3: offset right 1 block from default (3 blocks from where we are now)
+			active_tetro.left_x+=3;
+			replot_active_tetro();
+
+			if(check_valid_state()){ //test 3 succeeded
+				update_orientation_cw();
+				return;
+			}
+			//test 4: offset left 2 blocks and down 1 block from default; left 3 and down 1 from where we are now
+			active_tetro.left_x-=3;
+			active_tetro.top_y+=1;
+			replot_active_tetro();
+
+			if(check_valid_state()){ //test 4 succeeded
+				update_orientation_cw();
+				return;
+			}
+			//test 5: offset right 1 and up 2 from default (right 3 and up 3 from where we are)
+			active_tetro.left_x+=3;
+			active_tetro.top_y-=3;
+			replot_active_tetro();
+
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+
+			//all tests failed, undo rotation
+			active_tetro.left_x-=1;
+			active_tetro.top_y+=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if(active_tetro.orientation==RIGHT){ // R to 2
+			//test 2
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 3
+			active_tetro.left_x+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 4
+			active_tetro.left_x-=3;
+			active_tetro.top_y-=2;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 5
+			active_tetro.left_x+=3;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+
+			// undo rotation
+			active_tetro.left_x-=2;
+			active_tetro.top_y-=1;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if(active_tetro.orientation==TWO){ // 2 to L
+			// test 2
+			active_tetro.left_x+=2;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.left_x-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x+=3;
+			active_tetro.top_y-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x-=3;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x+=1;
+			active_tetro.top_y-=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+
+		}
+		else if(active_tetro.orientation==LEFT){ // L to 0
+			// test 2
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.left_x-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x+=3;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x-=3;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x+=2;
+			active_tetro.top_y+=1;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+	}
+	else if(active_tetro.type==DARK_BLUE){ // J tetromino
+		if(active_tetro.orientation==DEFAULT){ //0 to R
+			//test 2
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 3
+			active_tetro.top_y-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 4
+			active_tetro.left_x+=1;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 5
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+
+			// undo rotation
+			active_tetro.left_x+=1;
+			active_tetro.top_y-=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if (active_tetro.orientation==RIGHT){ // R to 2
+			// according to the graphic, there is no test 2?
+			//(there is but it's the exact same as test 1)
+
+			//test 3
+			active_tetro.left_x+=1;
+			active_tetro.top_y+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 4
+			active_tetro.left_x-=1;
+			active_tetro.top_y-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 5
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+
+			// undo rotation
+			active_tetro.left_x-=1;
+			active_tetro.top_y+=3;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if (active_tetro.orientation==TWO){ // 2 to L
+			//test 2
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 3
+			active_tetro.top_y-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 4
+			active_tetro.left_x-=1;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 5
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+
+			// undo rotation
+			active_tetro.left_x-=1;
+			active_tetro.top_y-=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if (active_tetro.orientation==LEFT){ // L to 0
+			//test 2
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 3
+			active_tetro.top_y+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 4
+			active_tetro.left_x+=1;
+			active_tetro.top_y-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 5
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+
+			// undo rotation
+			active_tetro.left_x+=1;
+			active_tetro.top_y+=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+	}
+	else if(active_tetro.type==ORANGE){ // L
+		if(active_tetro.orientation==DEFAULT){ // 0 to R
+			//test 2
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 3
+			active_tetro.top_y-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 4
+			active_tetro.left_x+=1;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 5
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+
+			// undo rotation
+			active_tetro.left_x+=1;
+			active_tetro.top_y-=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if (active_tetro.orientation==RIGHT){ // R to 2
+			//test 2
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 3
+			active_tetro.top_y+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 4
+			active_tetro.left_x-=1;
+			active_tetro.top_y-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//test 5
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+
+			// undo rotation
+			active_tetro.left_x-=1;
+			active_tetro.top_y+=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if (active_tetro.orientation==TWO){ // 2 to L
+			// test 2
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x-=1;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x-=1;
+			active_tetro.top_y-=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if (active_tetro.orientation==LEFT){ // L to 0
+			// test 2
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x+=1;
+			active_tetro.top_y-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x+=1;
+			active_tetro.top_y+=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+	}
+	else if(active_tetro.type==GREEN){ // S
+		if(active_tetro.orientation==DEFAULT){ // O to R
+			// test 2
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x+=1;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x+=1;
+			active_tetro.top_y-=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if(active_tetro.orientation==RIGHT){ //R to 2
+			// test 2
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x-=1;
+			active_tetro.top_y-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x-=1;
+			active_tetro.top_y+=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if(active_tetro.orientation==TWO){ // 2 to L
+			// test 2
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x+=1;
+			active_tetro.top_y-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x+=1;
+			active_tetro.top_y+=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if(active_tetro.orientation==LEFT){ // L to 0
+			// test 2
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x+=1;
+			active_tetro.top_y-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x+=1;
+			active_tetro.top_y+=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+	}
+	else if(active_tetro.type==PURPLE){ // T
+		if(active_tetro.orientation==DEFAULT){ // 0 to R
+			// test 2
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x+=1;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x+=1;
+			active_tetro.top_y-=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if(active_tetro.orientation==RIGHT){ // R to 2
+			// test 2
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x-=1;
+			active_tetro.top_y-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x-=1;
+			active_tetro.top_y+=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if(active_tetro.orientation==TWO){ // 2 to L
+			// test 2
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x-=1;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x-=1;
+			active_tetro.top_y-=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if(active_tetro.orientation==LEFT){ // L to 0
+			// test 2
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x+=1;
+			active_tetro.top_y-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x+=1;
+			active_tetro.top_y+=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+	}
+	else if(active_tetro.type==RED){ // Z
+		if(active_tetro.orientation==DEFAULT){ //0 to R
+			// test 2
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x+=1;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x+=1;
+			active_tetro.top_y-=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if(active_tetro.orientation==RIGHT){
+			// test 2
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x-=1;
+			active_tetro.top_y-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x-=1;
+			active_tetro.top_y+=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if(active_tetro.orientation==TWO){ // 2 to L
+			// test 2
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x-=1;
+			active_tetro.top_y+=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x-=1;
+			active_tetro.top_y-=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+		else if(active_tetro.orientation==LEFT){ // L to 0
+			// test 2
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 3
+			active_tetro.top_y+=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 4
+			active_tetro.left_x+=1;
+			active_tetro.top_y-=3;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			// test 5
+			active_tetro.left_x-=1;
+			replot_active_tetro();
+			if(check_valid_state()){
+				update_orientation_cw();
+				return;
+			}
+			//undo rotation
+			active_tetro.left_x+=1;
+			active_tetro.top_y+=2;
+			rotate_tetro_counterclockwise();
+			replot_active_tetro();
+			return;
+		}
+
+	}
+
+
+
+
+
 	if(!check_valid_state()){
 		rotate_tetro_counterclockwise();
 		replot_active_tetro();
 	}
-	printf("Array after CW:\n");
-	print_tetro_array();
+	//printf("Array after CW:\n");
+	//print_tetro_array();
 }
 
 void rotate_tetro_counterclockwise(){
-	printf("Rotate CCW called\n");
-	printf("Array before CCW:\n");
-	print_tetro_array();
+	//printf("Rotate CCW called\n");
+	//printf("Array before CCW:\n");
+	//print_tetro_array();
 
 	if(active_tetro.dimensions==2){
 		return;
 	}
 
+	// 1. Reverse each row
 	for(int i=0; i<active_tetro.dimensions; i++){
 		reverse_active_tetro_row(i);
 	}
+	// 2. Transpose
 	transpose_active_tetro();
 
 	replot_active_tetro();
-	if(!check_valid_state()){
+	if(check_valid_state()){
+		active_tetro.orientation--;
+		if(active_tetro.orientation<0){
+			active_tetro.orientation=3;
+		}
+	}
+	else{
 		rotate_tetro_clockwise();
 		replot_active_tetro();
 	}
 
-	printf("Array after CCW:\n");
-	print_tetro_array();
+	//printf("Array after CCW:\n");
+	//print_tetro_array();
 }
 
 
