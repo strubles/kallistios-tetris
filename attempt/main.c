@@ -5,6 +5,11 @@
 // FOR FONTS: REFER TO:
 // C:\Data\kos-examples\parallax\font\font.c
 
+
+// RUN ON DREAMCAST:
+// (after running 'make' and attaching bus 2-2 to the WSL instance)
+// sudo /opt/toolchains/dc/bin/dc-tool-ser -x attempt.elf -t /dev/ttyUSB0 -c /mnt/c/Data/Projects/attempt/romdisk
+
 #include <kos.h>
 
 //#include <plx/matrix.h>
@@ -269,13 +274,9 @@ void init(){
 	vmu_draw_lcd(vmu, vmu_carl);
 
 	//plx_font_t * fnt = plx_font_load("/rd/axaxax.txf");
-	plx_font_t * fnt = plx_font_load("/pc/axaxax.txf");
+	plx_font_t * fnt = plx_font_load("/pc/typewriter.txf");
 
 	fnt_cxt = plx_fcxt_create(fnt, PVR_LIST_TR_POLY);
-
-	w.x = 30.0f;
-	w.y = 50.0f;
-	w.z = 10.0f;
 
 }
 
@@ -947,12 +948,30 @@ void check_lines(){
 
 
 
-void draw_text(){
+void draw_text(float x, float y, char * text){
+	//w.x = 30.0f;
+	//w.y = 50.0f;
+	w.x = x;
+	w.y = y;
+	w.z = 5.0f;
+
 	plx_fcxt_begin(fnt_cxt);
 	plx_fcxt_setpos_pnt(fnt_cxt, &w);
-	plx_fcxt_draw(fnt_cxt, "This is a test!");
-	plx_spr_inp(256, 256, 320, 240, 20, 0xffffffff);    // texture test
+	//plx_fcxt_draw(fnt_cxt, "This is a test!");
+	plx_fcxt_draw(fnt_cxt, text);
+	//plx_spr_inp(256, 256, 320, 240, 20, 0xffffffff);    // texture test
 	plx_fcxt_end(fnt_cxt);
+}
+
+char score_string[10];
+char lines_string[10];
+
+void draw_hud(){
+	draw_text(50,300,"SCORE");
+	// draw score
+	draw_text(300,300,"LINES");
+	sprintf(lines_string, "%d", line_clears);
+	draw_text(300,80,lines_string);
 }
 
 //void move_active_tetro_downwards
@@ -998,7 +1017,9 @@ void draw_frame(){
 	
 	draw_field();
 
-	draw_text();
+	//draw_text(100,100,"What's going on?");
+	//draw_text(200,200,"Hello there!");
+	draw_hud();
 
 	pvr_list_finish();
 
