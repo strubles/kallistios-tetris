@@ -15,10 +15,21 @@
 #include "vmu_img.h"
 #include "display.c"
 
+// font stuff
+#include <plx/font.h>
+#include <plx/sprite.h>
+#include <plx/list.h>
+#include <plx/dr.h>
+
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define FIELD_HEIGHT 400 // 20 blocks x 20 pixels each
 #define FIELD_WIDTH 200 // 10 blocks x 20 pixels each
+
+plx_font_t * fnt;
+plx_fcxt_t * fnt_cxt;
+point_t w;
+
 
 // When a tetromino is rotated, Tetris does a series of tests to find a valid (open) position to rotate the tetromino into.
 // The tests are done in order and the first test that succeeds determines where the tetromino is placed.
@@ -215,7 +226,9 @@ color_id temp_field[24][12] = {EMPTY};
 // it is copied over to the main field matrix in the same location, and the temp_field matrix is
 // cleared out for the next tetromino.
 
+extern uint8 romdisk[];
 KOS_INIT_FLAGS(INIT_DEFAULT);
+KOS_INIT_ROMDISK(romdisk);
 
 float position_x = SCREEN_WIDTH/2;
 float position_y = SCREEN_HEIGHT/2;
@@ -254,6 +267,15 @@ void init(){
 
 	maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
 	vmu_draw_lcd(vmu, vmu_carl);
+
+	//plx_font_t * fnt = plx_font_load("/rd/axaxax.txf");
+	plx_font_t * fnt = plx_font_load("/pc/axaxax.txf");
+
+	fnt_cxt = plx_fcxt_create(fnt, PVR_LIST_TR_POLY);
+
+	w.x = 30.0f;
+	w.y = 50.0f;
+	w.z = 10.0f;
 
 }
 
@@ -923,6 +945,16 @@ void check_lines(){
 	}
 }
 
+
+
+void draw_text(){
+	plx_fcxt_begin(fnt_cxt);
+	plx_fcxt_setpos_pnt(fnt_cxt, &w);
+	plx_fcxt_draw(fnt_cxt, "This is a test!");
+	plx_spr_inp(256, 256, 320, 240, 20, 0xffffffff);    // texture test
+	plx_fcxt_end(fnt_cxt);
+}
+
 //void move_active_tetro_downwards
 
 int fall_timer = 60;
@@ -965,6 +997,8 @@ void draw_frame(){
 	draw_vert_line(100, SCREEN_HEIGHT-100, 100, COLOR_WHITE); // white - left
 	
 	draw_field();
+
+	draw_text();
 
 	pvr_list_finish();
 
