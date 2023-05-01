@@ -174,7 +174,7 @@ color_id tetro_dummy_3x3[3][3] = {0};
 color_id tetro_dummy_2x2[2][2] = {0};
 
 color_id held_tetro = 0;
-int hold_eligible = 1;
+int hold_eligible = 1; // whether we will let the user perform a tetromino hold
 
 int has_drawn_new_tetro = 0;
 
@@ -808,11 +808,34 @@ void rotate_tetro_counterclockwise(){
 	//print_tetro_array();
 }
 
+void generate_new_tetro();//so compiler doesn't yell at us
+
+void hold_tetromino(){
+
+	color_id tetromino_to_hold = active_tetro.type;
+	
+	if(held_tetro){ //if there's currently a tetromino already in the hold
+	// swap it
+		init_new_tetro(held_tetro);
+		replot_active_tetro();
+
+		held_tetro = tetromino_to_hold;
+	}
+	else {
+		//otherwise, make a new one
+		held_tetro = tetromino_to_hold;
+		generate_new_tetro();
+	}
+	hold_eligible=0;
+	printf("Holding: tetro of type %d\n", held_tetro);
+}
+
 
 int move_timebuffer = 10;
 int released_y_button=1;
 int released_x_button=1;
 int released_up_button=1;
+int released_ltrig=1;
 
 char ltrig_text[10];
 
@@ -832,6 +855,15 @@ int move_tetromino(){
 		if(!state){
 			return 0;
 		}
+
+		// the triggers on the sega dreamcast are analog triggers, not digital buttons,
+		// so they range from 0-255 (inclusive)
+		// I have the hold function trigger if it's at least half-pressed (128)
+		if(state->ltrig >= 128 && hold_eligible){
+			hold_tetromino();
+			hold_eligible=0;
+		}
+
 		if(move_timebuffer==0){
 			if((state->buttons & CONT_DPAD_UP) && released_up_button){
 				hard_drop();
@@ -853,6 +885,7 @@ int move_tetromino(){
 				move_timebuffer=10;
 			}
 			
+
 			if( (state->buttons & CONT_Y) && released_y_button){
 				rotate_tetro_clockwise();
 				released_y_button=0;
@@ -1035,15 +1068,17 @@ void draw_hud(){
 	sprintf(lines_string, "%d", line_clears);
 	draw_text(500,340,lines_string);
 
+	/*
 	maple_device_t *cont;
     cont_state_t *state;
 
     cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
 
 	state=(cont_state_t *)maple_dev_status(cont);
-	
+
 	sprintf(ltrig_text, "%d", state->ltrig);
 	draw_text(50, 200, ltrig_text);
+	*/
 }
 
 //void move_active_tetro_downwards
@@ -1061,6 +1096,7 @@ void draw_frame(){
 	if(active_tetro.set==1 || first_run==1){
 		check_lines();
 		generate_new_tetro();
+		hold_eligible=1;
 		fall_timer=falltime;
 		first_run=0;
 		//printf("Generating new tetro...");
