@@ -177,6 +177,9 @@ color_id tetro_dummy_2x2[2][2] = {0};
 int has_drawn_new_tetro = 0;
 
 int line_clears = 0;
+long int score = 0;
+int level = 1;
+int falltime = 60;
 
 color COLOR_RED = {255, 255, 0, 0};
 color COLOR_ORANGE = {255, 255, 174, 94};
@@ -576,7 +579,7 @@ void tetro_right(){
 	}
 }
 
-void tetro_fall(){
+void tetro_fall(int award_score){
 	active_tetro.top_y += 1;
 	replot_active_tetro();
 	if(!check_valid_state()){
@@ -585,13 +588,19 @@ void tetro_fall(){
 		commit_tetro();
 		active_tetro.set=1;
 	}
+	if(award_score){
+		score+=1;
+	}
 }
 
 void hard_drop(){
 	// Falls straight down until the tetromino gets set
+	int blocks_fallen=0;
 	while(!active_tetro.set){
-		tetro_fall();
+		tetro_fall(0);
+		blocks_fallen++;
 	}
+	score = score + (blocks_fallen * 2);
 }
 
 // https://stackoverflow.com/questions/27288694/transpose-of-a-matrix-2d-array
@@ -823,7 +832,8 @@ int move_tetromino(){
 				move_timebuffer=10;
 			}
 			if(state->buttons & CONT_DPAD_DOWN){
-				tetro_fall();
+				// softdrop
+				tetro_fall(1);
 				move_timebuffer=10;
 			}
 			if(state->buttons & CONT_DPAD_LEFT){
@@ -924,6 +934,8 @@ void clear_line(int rownum){
 void check_lines(){
 	//printf("Checking lines...\n");
 	int found_empty_tile=0;
+	
+	int new_line_clears=0;
 
 	for(int row=3; row<=22; row++){
 		int cell=1;
@@ -940,9 +952,22 @@ void check_lines(){
 			//printf("Found full line: %d\n",row);
 			clear_line(row);
 			line_clears++;
+			new_line_clears++;
 			printf("Total line clears: %d\n",line_clears);
 		}
 		found_empty_tile=0;
+	}
+	if(new_line_clears==1){
+		score = score + (level * 100);
+	}
+	else if(new_line_clears==2){
+		score = score + (level * 300);
+	}
+	else if(new_line_clears==3){
+		score = score + (level * 500);
+	}
+	else if(new_line_clears==4){
+		score = score + (level * 800);
 	}
 }
 
@@ -965,13 +990,21 @@ void draw_text(float x, float y, char * text){
 
 char score_string[10];
 char lines_string[10];
+char level_string[10];
 
 void draw_hud(){
-	draw_text(50,300,"SCORE");
+	draw_text(50,300,"Score");
 	// draw score
-	draw_text(300,300,"LINES");
+	sprintf(score_string, "%ld", score);
+	draw_text(50,340,score_string);
+
+	draw_text(500,200,"Level");
+	sprintf(level_string, "%d", level);
+	draw_text(500,240,level_string);
+
+	draw_text(500,300,"Lines");
 	sprintf(lines_string, "%d", line_clears);
-	draw_text(300,80,lines_string);
+	draw_text(500,340,lines_string);
 }
 
 //void move_active_tetro_downwards
@@ -996,7 +1029,7 @@ void draw_frame(){
 
 	if(fall_timer<=0){
 		fall_timer=60;
-		tetro_fall();
+		tetro_fall(0);
 	}
 
 
