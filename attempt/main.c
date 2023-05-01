@@ -173,6 +173,8 @@ color_id tetro_dummy_4x4[4][4] = {0};
 color_id tetro_dummy_3x3[3][3] = {0};
 color_id tetro_dummy_2x2[2][2] = {0};
 
+color_id held_tetro = 0;
+int hold_eligible = 1;
 
 int has_drawn_new_tetro = 0;
 
@@ -810,10 +812,14 @@ void rotate_tetro_counterclockwise(){
 int move_timebuffer = 10;
 int released_y_button=1;
 int released_x_button=1;
+int released_up_button=1;
+
+char ltrig_text[10];
 
 int move_tetromino(){
 
 	// https://cadcdev.sourceforge.net/docs/kos-2.0.0/group__controller__buttons.html
+	// http://gamedev.allusion.net/docs/kos-2.0.0/structcont__state__t.html
 
 	maple_device_t *cont;
     cont_state_t *state;
@@ -827,9 +833,11 @@ int move_tetromino(){
 			return 0;
 		}
 		if(move_timebuffer==0){
-			if(state->buttons & CONT_DPAD_UP){
+			if((state->buttons & CONT_DPAD_UP) && released_up_button){
 				hard_drop();
+				//printf("LTRIG: %d\n", state->ltrig);
 				move_timebuffer=10;
+				released_up_button = 0;
 			}
 			if(state->buttons & CONT_DPAD_DOWN){
 				// softdrop
@@ -853,12 +861,17 @@ int move_tetromino(){
 				rotate_tetro_counterclockwise();
 				released_x_button=0;
 			}
+
 			if( !(state->buttons & CONT_X) && !released_x_button){
 				released_x_button=1;
 			}
 			if( !(state->buttons & CONT_Y) && !released_y_button){
 				released_y_button=1;
 			}
+			if ( !(state->buttons & CONT_DPAD_UP) && !released_up_button){
+				released_up_button = 1;
+			}
+
 			
 		}
 		if(move_timebuffer>0){
@@ -1008,6 +1021,7 @@ char lines_string[10];
 char level_string[10];
 
 void draw_hud(){
+
 	draw_text(50,300,"Score");
 	// draw score
 	sprintf(score_string, "%ld", score);
@@ -1020,6 +1034,16 @@ void draw_hud(){
 	draw_text(500,300,"Lines");
 	sprintf(lines_string, "%d", line_clears);
 	draw_text(500,340,lines_string);
+
+	maple_device_t *cont;
+    cont_state_t *state;
+
+    cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
+
+	state=(cont_state_t *)maple_dev_status(cont);
+	
+	sprintf(ltrig_text, "%d", state->ltrig);
+	draw_text(50, 200, ltrig_text);
 }
 
 //void move_active_tetro_downwards
