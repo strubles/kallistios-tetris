@@ -179,7 +179,7 @@ int has_drawn_new_tetro = 0;
 int line_clears = 0;
 long int score = 0;
 int level = 1;
-int falltime = 60;
+int falltime = 85;
 
 color COLOR_RED = {255, 255, 0, 0};
 color COLOR_ORANGE = {255, 255, 174, 94};
@@ -969,6 +969,14 @@ void check_lines(){
 	else if(new_line_clears==4){
 		score = score + (level * 800);
 	}
+
+	if(level < 15){
+		int new_level = (line_clears-(line_clears%10)/10)+1;
+		if(new_level>level){
+			level=new_level;
+			falltime=85-(new_level*5);
+		}
+	}
 }
 
 
@@ -1009,7 +1017,7 @@ void draw_hud(){
 
 //void move_active_tetro_downwards
 
-int fall_timer = 60;
+int fall_timer = 85;
 int first_run=1;
 
 void draw_frame(){
@@ -1022,13 +1030,13 @@ void draw_frame(){
 	if(active_tetro.set==1 || first_run==1){
 		check_lines();
 		generate_new_tetro();
-		fall_timer=60;
+		fall_timer=falltime;
 		first_run=0;
 		//printf("Generating new tetro...");
 	}
 
 	if(fall_timer<=0){
-		fall_timer=60;
+		fall_timer=falltime;
 		tetro_fall(0);
 	}
 
