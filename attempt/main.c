@@ -236,6 +236,8 @@ color_id temp_field[24][12] = {EMPTY};
 // it is copied over to the main field matrix in the same location, and the temp_field matrix is
 // cleared out for the next tetromino.
 
+color_id hold_field[4][4] = {EMPTY};
+
 extern uint8 romdisk[];
 KOS_INIT_FLAGS(INIT_DEFAULT);
 KOS_INIT_ROMDISK(romdisk);
@@ -1032,7 +1034,64 @@ void check_lines(){
 	// falltime = -6*level + 93
 }
 
+void draw_hold(){
+	if(!held_tetro){
+		return;
+	}
 
+	int hold_left = 50;
+	int hold_top = 50;
+
+	float block_x;
+	float block_y;
+
+	int dimensions;
+
+	if(held_tetro==LIGHT_BLUE){
+		dimensions=4;
+	}
+	else if(held_tetro==YELLOW){
+		dimensions=2;
+	}
+	else{
+		dimensions=3;
+	}
+	color_id (*arr_ptr)[dimensions][dimensions];
+
+	switch(held_tetro){
+		case LIGHT_BLUE:
+			arr_ptr = &TETRO_I;
+			break;
+		case RED:
+			arr_ptr = &TETRO_Z;
+			break;
+		case ORANGE:
+			arr_ptr = &TETRO_L;
+			break;
+		case YELLOW:
+			arr_ptr = &TETRO_O;
+			break;
+		case GREEN:
+			arr_ptr = &TETRO_S;
+			break;
+		case DARK_BLUE:
+			arr_ptr = &TETRO_J;
+			break;
+		case PURPLE:
+			arr_ptr = &TETRO_T;
+	}
+
+	for(int row=0; row<dimensions; row++){
+		for(int col=0; col<dimensions; col++){
+			if((*arr_ptr)[row][col]){
+				block_x= hold_left + (20*(col-1)) + 10;
+				block_y = hold_top + (20*(row-1)) + 10;
+				draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_enum(held_tetro));
+			}
+		}
+	}
+}
+	
 
 void draw_text(float x, float y, char * text){
 	//w.x = 30.0f;
@@ -1048,6 +1107,7 @@ void draw_text(float x, float y, char * text){
 	//plx_spr_inp(256, 256, 320, 240, 20, 0xffffffff);    // texture test
 	plx_fcxt_end(fnt_cxt);
 }
+
 
 char score_string[10];
 char lines_string[10];
@@ -1067,6 +1127,8 @@ void draw_hud(){
 	draw_text(500,300,"Lines");
 	sprintf(lines_string, "%d", line_clears);
 	draw_text(500,340,lines_string);
+
+	draw_hold();
 
 	/*
 	maple_device_t *cont;
