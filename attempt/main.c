@@ -179,7 +179,7 @@ int has_drawn_new_tetro = 0;
 int line_clears = 0;
 long int score = 0;
 int level = 1;
-int falltime = 85;
+int falltime = 93;
 
 color COLOR_RED = {255, 255, 0, 0};
 color COLOR_ORANGE = {255, 255, 174, 94};
@@ -967,16 +967,23 @@ void check_lines(){
 		score = score + (level * 500);
 	}
 	else if(new_line_clears==4){
+		printf("Tetris!");
 		score = score + (level * 800);
 	}
 
 	if(level < 15){
-		int new_level = (line_clears-(line_clears%10)/10)+1;
+		int new_level = ((line_clears-(line_clears%10))/10)+1;
 		if(new_level>level){
 			level=new_level;
-			falltime=85-(new_level*5);
+			//falltime=85-(new_level*5);
+			falltime= 93 - (new_level*6);
 		}
 	}
+	// FALL TIME CALCULATION:
+	// Level 1 - falls every 87 frames
+	// Level 15 - falls every 2 frames
+	// Equation:  y = -6x + 93
+	// falltime = -6*level + 93
 }
 
 
@@ -1017,7 +1024,7 @@ void draw_hud(){
 
 //void move_active_tetro_downwards
 
-int fall_timer = 85;
+int fall_timer = 93;
 int first_run=1;
 
 void draw_frame(){
