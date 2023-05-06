@@ -9,6 +9,7 @@
 // RUN ON DREAMCAST:
 // (after running 'make' and attaching bus 2-2 to the WSL instance)
 // sudo /opt/toolchains/dc/bin/dc-tool-ser -x attempt.elf -t /dev/ttyUSB0 -c /mnt/c/Data/Projects/attempt/romdisk
+//      ^ path to dc tool program             ^ your elf     ^ device        ^ path to your romdisk directory
 
 #include <kos.h>
 
@@ -38,6 +39,8 @@ plx_fcxt_t * fnt_cxt;
 point_t w;
 
 int loss = 0;
+int paused = 0;
+int pause_button_released=1;
 
 // When a tetromino is rotated, Tetris does a series of tests to find a valid (open) position to rotate the tetromino into.
 // The tests are done in order and the first test that succeeds determines where the tetromino is placed.
@@ -276,6 +279,7 @@ void initiate_game(){
 	falltime = 93;
 	fall_timer = 93;
 	loss = 0;
+	paused = 0;
 	first_run = 1;
 	active_tetro.set = 0;
 }
@@ -1189,14 +1193,33 @@ void check_reset_button(){
 
 }
 
+void check_pause_button(){
+	maple_device_t *controller = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
+	cont_state_t *controllerState = (cont_state_t*) maple_dev_status(controller);
+
+	if (!(controllerState->buttons & CONT_START)){
+		pause_button_released=1;
+	}
+	else if (pause_button_released==1){
+		if(paused){
+			paused=0;
+			pause_button_released=0;
+		} else {
+			paused=1;
+			pause_button_released=0;
+		}
+	}
+}
+
 //int fall_timer = 93;
 //int first_run=1;
 
 void draw_frame_gameplay(){
 
 	//check_buttons();
+	check_pause_button();
 
-	if (!loss){
+	if (!loss && !paused){
 		move_tetromino();
 
 		fall_timer=fall_timer-1;
@@ -1244,6 +1267,10 @@ void draw_frame_gameplay(){
 		draw_text(50,200,"You lost!");
 		draw_text(50,250,"Press START to reset");
 		check_reset_button();
+	}
+
+	if (paused){
+		draw_text(50, 200, "PAUSED");
 	}
 
 	pvr_list_finish();
