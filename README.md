@@ -36,3 +36,5 @@ actually putting it back in the correct order.)
 - Use Bootdreams to compile it into a disc image (follow the directions from the racketboy tutorial)
 - Burn this disc image onto a CD-R, then pop it into a dreamcast.
 - If you don't have a real dreamcast, or you don't want to burn it onto a disk, you can also use this disk image in a Dreamcast emulator.
+
+TIP: For some reason, the Linux WSL can access files from the host (Windows) machine file system, but the Windows machine can't access the Linux file system. Therefore, to be able to work on code in a Windows IDE like Visual Studio Code, you should store your project files in the Windows file system, like I have mine stored in a directory C:/Data. From Linux, you can acces Windows' file system using /mnt/c (so for my directory I cd to /mnt/c/Data).
