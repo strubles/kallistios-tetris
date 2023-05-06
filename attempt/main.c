@@ -16,6 +16,8 @@
 //#include <plx/prim.h>
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "vmu_img.h"
 #include "display.c"
@@ -35,6 +37,7 @@ plx_font_t * fnt;
 plx_fcxt_t * fnt_cxt;
 point_t w;
 
+int loss = 0;
 
 // When a tetromino is rotated, Tetris does a series of tests to find a valid (open) position to rotate the tetromino into.
 // The tests are done in order and the first test that succeeds determines where the tetromino is placed.
@@ -194,7 +197,7 @@ color COLOR_WHITE = {255, 255, 255, 255};
 color COLOR_BLACK = {255, 0, 0, 0};
 
 //setting up the field data structure.
-color_id field[24][12] = {
+color_id field_backup[24][12] = {
 //    0       1  2  3  4  5  6  7  8  9  10      11
 	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 0
 	{ 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 1
@@ -229,6 +232,10 @@ color_id field[24][12] = {
 // this is so I can prevent tetrominos from going off the screen in the same exact way that I
 // prevent tetrominos from overlapping/intersecting with other tetrominos.
 
+color_id field[24][12];
+
+//memcpy(field, field_backup, 12*24*sizeof(int));
+
 // an array of 23 arrays, each with 12 items in it
 color_id temp_field[24][12] = {EMPTY};
 // This variable an empty version of the field matrix. It is where the current active tetromino is put.
@@ -249,6 +256,29 @@ tetrodata active_tetro;
 // This holds data on the current active tetromino. It is continuously overwritten with the next
 // tetromino as the old tetromino get committed to the field matrix and doesn't need to be kept
 // track of anymore.
+
+int fall_timer=93;
+int first_run=1;
+
+void initiate_game(){
+	memset(temp_field, EMPTY, sizeof(temp_field));
+	memset(tetro_dummy_2x2, EMPTY, sizeof(tetro_dummy_2x2));
+	memset(tetro_dummy_3x3, EMPTY, sizeof(tetro_dummy_3x3));
+	memset(tetro_dummy_4x4, EMPTY, sizeof(tetro_dummy_4x4));
+	memset(hold_field, EMPTY, sizeof(hold_field));
+	memcpy(field, field_backup, 288*sizeof(int));
+	held_tetro = 0;
+	hold_eligible = 1; // whether we will let the user perform a tetromino hold
+	has_drawn_new_tetro = 0;
+	line_clears = 0;
+	score = 0;
+	level = 1;
+	falltime = 93;
+	fall_timer = 93;
+	loss = 0;
+	first_run = 1;
+	active_tetro.set = 0;
+}
 
 color get_argb_from_enum(color_id id){
 	switch(id){
@@ -922,6 +952,10 @@ void generate_new_tetro(){
 
 	init_new_tetro(random_id);
 	replot_active_tetro();
+
+	if(!check_valid_state()){
+		loss = 1;
+	}
 }
 
 void draw_field(){
@@ -1145,28 +1179,41 @@ void draw_hud(){
 
 //void move_active_tetro_downwards
 
-int fall_timer = 93;
-int first_run=1;
+void check_reset_button(){
+	maple_device_t *controller = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
+	cont_state_t *controllerState = (cont_state_t*) maple_dev_status(controller);
 
-void draw_frame(){
-
-	//check_buttons();
-	move_tetromino();
-
-	fall_timer=fall_timer-1;
-
-	if(active_tetro.set==1 || first_run==1){
-		check_lines();
-		generate_new_tetro();
-		hold_eligible=1;
-		fall_timer=falltime;
-		first_run=0;
-		//printf("Generating new tetro...");
+	if (controllerState->buttons & CONT_START){
+		initiate_game();
 	}
 
-	if(fall_timer<=0){
-		fall_timer=falltime;
-		tetro_fall(0);
+}
+
+//int fall_timer = 93;
+//int first_run=1;
+
+void draw_frame_gameplay(){
+
+	//check_buttons();
+
+	if (!loss){
+		move_tetromino();
+
+		fall_timer=fall_timer-1;
+
+		if(active_tetro.set==1 || first_run==1){
+			check_lines();
+			generate_new_tetro();
+			hold_eligible=1;
+			fall_timer=falltime;
+			first_run=0;
+			//printf("Generating new tetro...");
+		}
+
+		if(fall_timer<=0){
+			fall_timer=falltime;
+			tetro_fall(0);
+		}
 	}
 
 
@@ -1180,16 +1227,24 @@ void draw_frame(){
 	pvr_list_begin(PVR_LIST_TR_POLY);
 	//translucent drawing here
 	
+	/*
 	draw_horiz_line(100, SCREEN_WIDTH-100, 100, COLOR_RED); // red - top one
 	draw_vert_line(SCREEN_WIDTH-100, 100, SCREEN_HEIGHT-100, COLOR_GREEN); // green - right one
 	draw_horiz_line(100, SCREEN_WIDTH-100, SCREEN_HEIGHT-100, COLOR_LIGHT_BLUE); // blue - bottom
 	draw_vert_line(100, SCREEN_HEIGHT-100, 100, COLOR_WHITE); // white - left
+	*/
 	
 	draw_field();
 
 	//draw_text(100,100,"What's going on?");
 	//draw_text(200,200,"Hello there!");
 	draw_hud();
+
+	if(loss){
+		draw_text(50,200,"You lost!");
+		draw_text(50,250,"Press START to reset");
+		check_reset_button();
+	}
 
 	pvr_list_finish();
 
@@ -1201,21 +1256,25 @@ int main(){
 	int exitProgram = 0;
 
 	init();
+	initiate_game();
 
 	printf("Hello world!\n");
 	printf("How are you today? :)\n");
 
 	while(!exitProgram){
+		/*
 		maple_device_t *controller = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
 		cont_state_t *controllerState = (cont_state_t*) maple_dev_status(controller);
+		*/
 
 		//check controller for START button press
 		
+		/*
 		if (controllerState->buttons & CONT_START){
 			exitProgram = 1;
 		}
-		
-		draw_frame();
+		*/
+		draw_frame_gameplay();
 	}
 
 	maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
