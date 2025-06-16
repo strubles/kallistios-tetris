@@ -311,11 +311,11 @@ void init(){
 
 	pvr_set_bg_color(1.0,0.5,0.2);
 
-	maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
-	vmu_draw_lcd(vmu, vmu_carl);
+	// maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
+	// vmu_draw_lcd(vmu, vmu_carl);
 
 	//plx_font_t * fnt = plx_font_load("/rd/axaxax.txf");
-	plx_font_t * fnt = plx_font_load("/pc/typewriter.txf");
+	plx_font_t * fnt = plx_font_load("/rd/typewriter.txf");
 
 	fnt_cxt = plx_fcxt_create(fnt, PVR_LIST_TR_POLY);
 
@@ -1304,8 +1304,8 @@ int main(){
 		draw_frame_gameplay();
 	}
 
-	maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
-	vmu_draw_lcd(vmu, vmu_clear);
+	// maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
+	// vmu_draw_lcd(vmu, vmu_clear);
 	pvr_shutdown();
 
 }
