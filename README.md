@@ -1,3 +1,9 @@
+# KallistiOS Tetris
+Low-level tetris implementation in KallistiOS for the Sega Dreamcast
+attempt/main.c is the main source file.
+
+---------
+
 Steps I took to configure Dreamcast software development (using Windows 11 and a serial cable)
 
 - Install Debian on Windows Subsystem for Linux (WSL), a Linux virtual machine client integrated into windows
@@ -15,7 +21,9 @@ For testing on the dreamcast using a USB-to-Dreamcast-Serial cord (coder's cable
   - That tutorial is for Ubuntu so refer to this to get it to install on debian:
   - https://github.com/dorssel/usbipd-win/issues/99 (archive: https://web.archive.org/web/20230428185629/https://github.com/dorssel/usbipd-win/issues/99)
 - When you have that installed, open your Debian WSL, connect the serial cable to your computer and to the dreamcast.
-- then open Powershell in admin mode, run "usbip wsl list" to show available devices; look at the BUSID for the serial cable (USB Serial Converter) and then run "usbip wsl attach --busid (busid)" (for me it was usbip wsl attach --busid 2-2) to attach it to the current WSL instance (you will need to do this everytime you start Debian and want to send your program to the Dreamcast).
+- then open Powershell in admin mode, run "usbipd list" to show available devices; look at the BUSID for the serial cable (USB Serial Converter). For e.g. mine was 2-1.
+- Run "usbipd bind --busid 2-1" (or whatever the busid is) to share the device.
+- Then run "usbipd attach --wsl --busid 2-1 --wsl Debian" (or whatever your busid is) to attach it to the current WSL instance (you may need to do this everytime you start Debian and want to send your program to the Dreamcast).
 
 - To run the program on the dreamcast through the serial cable, you will need the programs "dc-load" (runs on the Dreamcast) and "dc-tool" (runs on the computer). You will specifically need the serial versions of each if you have the serial cable like me (as opposed to the broadband/IP versions).
   - https://sizious.com/download/dreamcast/#dc-tool (archive: https://web.archive.org/web/20221207203500/https://sizious.com/download/dreamcast/)
