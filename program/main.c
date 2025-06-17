@@ -12,6 +12,7 @@
 //      ^ path to dc tool program             ^ your elf     ^ device        ^ path to your romdisk directory
 
 #include <kos.h>
+#include <kos/dbglog.h>
 
 //#include <plx/matrix.h>
 //#include <plx/prim.h>
@@ -37,9 +38,9 @@ plx_font_t * fnt;
 plx_fcxt_t * fnt_cxt;
 point_t w;
 
-int loss = 0;
+// int loss = 0; // !
 int paused = 0;
-int pause_button_released=1;
+int pause_button_released=1; // !
 
 // When a tetromino is rotated, Tetris does a series of tests to find a valid (open) position to rotate the tetromino into.
 // The tests are done in order and the first test that succeeds determines where the tetromino is placed.
@@ -167,6 +168,33 @@ color_id TETRO_T[3][3] = {
     { 0, 0, 0 }
 };
 
+
+typedef struct {
+    color_id field[24][12];
+    color_id temp_field[24][12];
+    color_id hold_field[4][4];
+	color_id tetro_dummy_4x4[4][4];
+	color_id tetro_dummy_3x3[3][3];
+	color_id tetro_dummy_2x2[2][2];
+    color_id held_tetro;
+    int hold_eligible;
+    int has_drawn_new_tetro;
+    long int score;
+    int level;
+    int line_clears;
+    int fall_timer;
+    int falltime; // what we reset the timer to after every tetro fall
+    tetrodata active_tetro;
+    int first_run;
+    int loss;
+    int move_timebuffer;
+    int released_y_button;
+    int released_x_button;
+    int released_up_button;
+    int released_ltrig;
+} GameInstance;
+
+
 // Arrays for holding the real current tetromino.
 // When a new tetromino is spawned, the relevant tetro array (TETRO_Z, TETRO_L, etc)
 // is copied into it.
@@ -174,19 +202,19 @@ color_id TETRO_T[3][3] = {
 // tetromino of the same type will spawn in.
 // There are 3 of them because while most tetrominos go in the 3x3 one, the I needs 4x4 and
 // the O needs 2x2.
-color_id tetro_dummy_4x4[4][4] = {0};
-color_id tetro_dummy_3x3[3][3] = {0};
-color_id tetro_dummy_2x2[2][2] = {0};
+// color_id tetro_dummy_4x4[4][4] = {0}; // !
+// color_id tetro_dummy_3x3[3][3] = {0}; // !
+// color_id tetro_dummy_2x2[2][2] = {0}; // !
 
-color_id held_tetro = 0;
-int hold_eligible = 1; // whether we will let the user perform a tetromino hold
+// color_id held_tetro = 0; // !
+// int hold_eligible = 1; // ! whether we will let the user perform a tetromino hold
 
-int has_drawn_new_tetro = 0;
+// int has_drawn_new_tetro = 0; // !
 
-int line_clears = 0;
-long int score = 0;
-int level = 1;
-int falltime = 93;
+// int line_clears = 0; // !
+// long int score = 0; // !
+// int level = 1; // ! 
+// int falltime = 93; // !
 
 color COLOR_RED = {255, 255, 0, 0};
 color COLOR_ORANGE = {255, 255, 174, 94};
@@ -234,18 +262,18 @@ color_id field_backup[24][12] = {
 // this is so I can prevent tetrominos from going off the screen in the same exact way that I
 // prevent tetrominos from overlapping/intersecting with other tetrominos.
 
-color_id field[24][12];
+// color_id field[24][12]; // !
 
 //memcpy(field, field_backup, 12*24*sizeof(int));
 
 // an array of 23 arrays, each with 12 items in it
-color_id temp_field[24][12] = {EMPTY};
+// color_id temp_field[24][12] = {EMPTY}; // !
 // This variable an empty version of the field matrix. It is where the current active tetromino is put.
 // It is rendered to the screen directly on top of the main field matrix. When a tetromino is set,
 // it is copied over to the main field matrix in the same location, and the temp_field matrix is
 // cleared out for the next tetromino.
 
-color_id hold_field[4][4] = {EMPTY};
+// color_id hold_field[4][4] = {EMPTY}; // !
 
 extern uint8 romdisk[];
 KOS_INIT_FLAGS(INIT_DEFAULT);
@@ -254,34 +282,60 @@ KOS_INIT_ROMDISK(romdisk);
 float position_x = SCREEN_WIDTH/2;
 float position_y = SCREEN_HEIGHT/2;
 
-tetrodata active_tetro;
+// tetrodata active_tetro; // !
 // This holds data on the current active tetromino. It is continuously overwritten with the next
 // tetromino as the old tetromino get committed to the field matrix and doesn't need to be kept
 // track of anymore.
 
-int fall_timer=93;
-int first_run=1;
+// int fall_timer=93; // !
+// int first_run=1; // !
 
-void initiate_game(){
-    memset(temp_field, EMPTY, sizeof(temp_field));
-    memset(tetro_dummy_2x2, EMPTY, sizeof(tetro_dummy_2x2));
-    memset(tetro_dummy_3x3, EMPTY, sizeof(tetro_dummy_3x3));
-    memset(tetro_dummy_4x4, EMPTY, sizeof(tetro_dummy_4x4));
-    memset(hold_field, EMPTY, sizeof(hold_field));
-    memcpy(field, field_backup, 288*sizeof(int));
-    held_tetro = 0;
-    hold_eligible = 1; // whether we will let the user perform a tetromino hold
-    has_drawn_new_tetro = 0;
-    line_clears = 0;
-    score = 0;
-    level = 1;
-    falltime = 93;
-    fall_timer = 93;
-    loss = 0;
+void init_game_instance(GameInstance* game){
     paused = 0;
-    first_run = 1;
-    active_tetro.set = 0;
+    memset(game->temp_field, EMPTY, sizeof(game->temp_field));
+    memset(game->tetro_dummy_2x2, EMPTY, sizeof(game->tetro_dummy_2x2));
+    memset(game->tetro_dummy_3x3, EMPTY, sizeof(game->tetro_dummy_3x3));
+    memset(game->tetro_dummy_4x4, EMPTY, sizeof(game->tetro_dummy_4x4));
+    memset(game->hold_field, EMPTY, sizeof(game->hold_field));
+    memcpy(game->field, field_backup, 288*sizeof(int));
+    game->held_tetro = 0;
+    game->hold_eligible = 1; // whether we will let the user perform a tetromino hold
+    game->has_drawn_new_tetro = 0;
+    game->line_clears = 0;
+    game->score = 0;
+    game->level = 1;
+    game->falltime = 93;
+    game->fall_timer = 93;
+    game->loss = 0;
+    game->first_run = 1;
+    game->active_tetro.set = 0;
+    game->move_timebuffer = 10;
+    game->released_y_button=1;
+    game->released_x_button=1;
+    game->released_up_button=1;
+    game->released_ltrig=1;
 }
+
+// void initiate_game(){
+//     memset(temp_field, EMPTY, sizeof(temp_field));
+//     memset(tetro_dummy_2x2, EMPTY, sizeof(tetro_dummy_2x2));
+//     memset(tetro_dummy_3x3, EMPTY, sizeof(tetro_dummy_3x3));
+//     memset(tetro_dummy_4x4, EMPTY, sizeof(tetro_dummy_4x4));
+//     memset(hold_field, EMPTY, sizeof(hold_field));
+//     memcpy(field, field_backup, 288*sizeof(int));
+//     held_tetro = 0;
+//     hold_eligible = 1; // whether we will let the user perform a tetromino hold
+//     has_drawn_new_tetro = 0;
+//     line_clears = 0;
+//     score = 0;
+//     level = 1;
+//     falltime = 93;
+//     fall_timer = 93;
+//     loss = 0;
+//     paused = 0;
+//     first_run = 1;
+//     active_tetro.set = 0;
+// }
 
 color get_argb_from_enum(color_id id){
     switch(id){
@@ -429,91 +483,91 @@ void draw_horiz_line(float left, float right, float y, color argb) {
     draw_square(left, right, y, y+1, argb);
 }
 
-void init_new_tetro(color_id id){
+void init_new_tetro(GameInstance* game, color_id id){
     // This function takes a color_id (which also dictates the type of tetromino) and
     // populates the active_tetro variable with data representing a newly spawned
     // tetromino of that type.
     // It also fills the relevant "dummy" tetromino array with a fresh copy of that tetromino's
     // data array (TETRO_I, TETRO_J, etc)
 
-    active_tetro.orientation=DEFAULT;
-    active_tetro.type=id;
-    active_tetro.set=0;
+    game->active_tetro.orientation=DEFAULT;
+    game->active_tetro.type=id;
+    game->active_tetro.set=0;
 
     if(id==LIGHT_BLUE){
         // reset the I tetromino holder to its initial state
         for(int i=0; i<4; i++){
             for(int j=0; j<4; j++){
-                tetro_dummy_4x4[i][j] = TETRO_I[i][j];
+                game->tetro_dummy_4x4[i][j] = TETRO_I[i][j];
             }
         }
         //now configure the correct initial settings in the active tetro struct
-        active_tetro.left_x=4;
-        active_tetro.top_y=2;
-        active_tetro.dimensions=4;
-        active_tetro.tetro_index=1;
+        game->active_tetro.left_x=4;
+        game->active_tetro.top_y=2;
+        game->active_tetro.dimensions=4;
+        game->active_tetro.tetro_index=1;
     }
     else if(id==YELLOW){
         for(int i=0; i<2; i++){
             for(int j=0; j<2; j++){
-                tetro_dummy_2x2[i][j] = TETRO_O[i][j];
+                game->tetro_dummy_2x2[i][j] = TETRO_O[i][j];
             }
         }
 
-        active_tetro.left_x = 5;
-        active_tetro.top_y=3;
-        active_tetro.dimensions=2;
-        active_tetro.tetro_index=-1;
+        game->active_tetro.left_x = 5;
+        game->active_tetro.top_y=3;
+        game->active_tetro.dimensions=2;
+        game->active_tetro.tetro_index=-1;
     }
     else {
-        active_tetro.dimensions=3;
-        active_tetro.left_x=4;
-        active_tetro.top_y=3;
+        game->active_tetro.dimensions=3;
+        game->active_tetro.left_x=4;
+        game->active_tetro.top_y=3;
 
         if(id==RED){ //Z			
             for(int i=0; i<3; i++){
                 for(int j=0; j<3; j++){
-                    tetro_dummy_3x3[i][j] = TETRO_Z[i][j];
+                    game->tetro_dummy_3x3[i][j] = TETRO_Z[i][j];
                 }
             }
-            active_tetro.tetro_index=0;
+            game->active_tetro.tetro_index=0;
         }
         else if(id==ORANGE){ //L
             for(int i=0; i<3; i++){
                 for(int j=0; j<3; j++){
-                    tetro_dummy_3x3[i][j] = TETRO_L[i][j];
+                    game->tetro_dummy_3x3[i][j] = TETRO_L[i][j];
                 }
             }
-            active_tetro.tetro_index=0;
+            game->active_tetro.tetro_index=0;
         }
         else if(id==GREEN){ //S
             for(int i=0; i<3; i++){
                 for(int j=0; j<3; j++){
-                    tetro_dummy_3x3[i][j] = TETRO_S[i][j];
+                    game->tetro_dummy_3x3[i][j] = TETRO_S[i][j];
                 }
             }
-            active_tetro.tetro_index=0;
+            game->active_tetro.tetro_index=0;
         }
 
         else if(id==DARK_BLUE){ //J
             for(int i=0; i<3; i++){
                 for(int j=0; j<3; j++){
-                    tetro_dummy_3x3[i][j] = TETRO_J[i][j];
+                    game->tetro_dummy_3x3[i][j] = TETRO_J[i][j];
                 }
             }
-            active_tetro.tetro_index=0;
+            game->active_tetro.tetro_index=0;
         }
 
         else if(id==PURPLE){ //T
             //printf("Loading T tetro...\n");
             for(int i=0; i<3; i++){
                 for(int j=0; j<3; j++){
-                    tetro_dummy_3x3[i][j] = TETRO_T[i][j];
+                    game->tetro_dummy_3x3[i][j] = TETRO_T[i][j];
                     //printf("%d ",tetro_dummy_3x3[i][j]);
                 }
                 //printf("\n");
             }
-            active_tetro.tetro_index=0;
+            game->active_tetro.tetro_index=0;
         }
 
         else{
@@ -523,65 +577,65 @@ void init_new_tetro(color_id id){
     }
 }
 
-void replot_active_tetro(){
+void replot_active_tetro(GameInstance* game){
     // Adds active_tetro to the temp_field matrix, in the position and
     // orientation specified by the data members in active_tetro.
     // You have to do this before you check the validity of the fields.
 
-    memset(temp_field, EMPTY, sizeof(temp_field));
+    memset(game->temp_field, EMPTY, sizeof(game->temp_field));
 
-    if(active_tetro.dimensions==2){
+    if(game->active_tetro.dimensions==2){
         // use tetro_dummy_2x2
         for(int row=0; row<2; row++){
             for(int cell=0; cell<2; cell++){
-                if(active_tetro.top_y+row<24 && active_tetro.left_x+cell<12){ //don't go off the grid
-                    temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_2x2[row][cell];
+                if(game->active_tetro.top_y+row<24 && game->active_tetro.left_x+cell<12){ //don't go off the grid
+                    game->temp_field[game->active_tetro.top_y+row][game->active_tetro.left_x+cell] = game->tetro_dummy_2x2[row][cell];
                 }
             }
         }
     }
-    else if (active_tetro.dimensions==4){
+    else if (game->active_tetro.dimensions==4){
         // use tetro_Dummy_4x4
         for(int row=0; row<4; row++){
             for(int cell=0; cell<4; cell++){
-                if(active_tetro.top_y+row<24 && active_tetro.left_x+cell<12){ //don't go off the grid
-                    temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_4x4[row][cell];
+                if(game->active_tetro.top_y+row<24 && game->active_tetro.left_x+cell<12){ //don't go off the grid
+                    game->temp_field[game->active_tetro.top_y+row][game->active_tetro.left_x+cell] = game->tetro_dummy_4x4[row][cell];
                 }
             }
         }
     }
-    else if (active_tetro.dimensions==3){
+    else if (game->active_tetro.dimensions==3){
         // use tetro_dummy_3x3
         for(int row=0; row<3; row++){
             for(int cell=0; cell<3; cell++){
-                if(active_tetro.top_y+row<24 && active_tetro.left_x+cell<12){ //don't go off the grid
-                    temp_field[active_tetro.top_y+row][active_tetro.left_x+cell] = tetro_dummy_3x3[row][cell];
+                if(game->active_tetro.top_y+row<24 && game->active_tetro.left_x+cell<12){ //don't go off the grid
+                    game->temp_field[game->active_tetro.top_y+row][game->active_tetro.left_x+cell] = game->tetro_dummy_3x3[row][cell];
                 }
             }
         }
     }
     else{
-        printf("ERROR: replot_active_tetro() called with invalid dimension: %d\n",active_tetro.dimensions);
+        printf("ERROR: replot_active_tetro() called with invalid dimension: %d\n",game->active_tetro.dimensions);
         exit(1);
     }
 }
 
-void commit_tetro(){
+void commit_tetro(GameInstance* game){
     // The active tetromino gets copied from the active tetromino array to the main field
     // data structure to "set" it.
     // THIS DOES NOT DO CHECKS to validate position! Check it first with check_valid_state()
 
     for(int row=0; row<24; row=row+1){
         for(int cell=0; cell<12; cell=cell+1){
-            if(temp_field[row][cell]>0){
-                field[row][cell]=temp_field[row][cell];
+            if(game->temp_field[row][cell]>0){
+                game->field[row][cell]=game->temp_field[row][cell];
             }
         }
     }
 
 }
 
-int check_valid_state(){
+int check_valid_state(GameInstance* game){
     // Checks for overlapping tiles/blocks between the temp_field (the active tetromino) and
     // the field (all other tetrominos and the edges of the screen).
     // Returns 0 (false) if an overlap is found (state is invalid).
@@ -590,7 +644,7 @@ int check_valid_state(){
 
     for(int row=0; row<24; row++){
         for(int cell=0; cell<12; cell++){
-            if(field[row][cell]!=0 && temp_field[row][cell]!=0){
+            if(game->field[row][cell]!=0 && game->temp_field[row][cell]!=0){
                 return 0;
             }
         }
@@ -598,63 +652,63 @@ int check_valid_state(){
     return 1;
 }
 
-void tetro_left(){
-    active_tetro.left_x -= 1;
-    replot_active_tetro();
-    if(!check_valid_state()){
-        active_tetro.left_x += 1; //undo it
-        replot_active_tetro();
+void tetro_left(GameInstance* game){
+    game->active_tetro.left_x -= 1;
+    replot_active_tetro(game);
+    if(!check_valid_state(game)){
+        game->active_tetro.left_x += 1; //undo it
+        replot_active_tetro(game);
     }
 }
 
-void tetro_right(){
-    active_tetro.left_x += 1;
-    replot_active_tetro();
-    if(!check_valid_state()){
-        active_tetro.left_x -= 1; //undo it
-        replot_active_tetro();
+void tetro_right(GameInstance* game){
+    game->active_tetro.left_x += 1;
+    replot_active_tetro(game);
+    if(!check_valid_state(game)){
+        game->active_tetro.left_x -= 1; //undo it
+        replot_active_tetro(game);
     }
 }
 
-void tetro_fall(int award_score){
-    active_tetro.top_y += 1;
-    replot_active_tetro();
-    if(!check_valid_state()){
-        active_tetro.top_y -= 1; //undo it
-        replot_active_tetro();
-        commit_tetro();
-        active_tetro.set=1;
+void tetro_fall(GameInstance* game, int award_score){
+    game->active_tetro.top_y += 1;
+    replot_active_tetro(game);
+    if(!check_valid_state(game)){
+        game->active_tetro.top_y -= 1; //undo it
+        replot_active_tetro(game);
+        commit_tetro(game);
+        game->active_tetro.set=1;
     }
     if(award_score){
-        score+=1;
+        game->score+=1;
     }
 }
 
-void hard_drop(){
+void hard_drop(GameInstance* game){
     // Falls straight down until the tetromino gets set
     int blocks_fallen=0;
-    while(!active_tetro.set){
-        tetro_fall(0);
+    while(!game->active_tetro.set){
+        tetro_fall(game, 0);
         blocks_fallen++;
     }
-    score = score + (blocks_fallen * 2);
+    game->score += blocks_fallen * 2;
 }
 
 // https://stackoverflow.com/questions/27288694/transpose-of-a-matrix-2d-array
 
-void print_tetro_array(){
-    int n = active_tetro.dimensions;
+void print_tetro_array(GameInstance* game){
+    int n = game->active_tetro.dimensions;
 
     color_id (*arr_ptr)[n][n];
 
     if(n==3){
-        arr_ptr = &(tetro_dummy_3x3);
+        arr_ptr = &(game->tetro_dummy_3x3);
     }
     else if(n==4){
-        arr_ptr = &(tetro_dummy_4x4);
+        arr_ptr = &(game->tetro_dummy_4x4);
     }
     else if(n==2){
-        arr_ptr = &(tetro_dummy_2x2);
+        arr_ptr = &(game->tetro_dummy_2x2);
     }
 
     for(int i=0; i<n; i++){
@@ -675,113 +729,110 @@ void swap(color_id* arg1, color_id* arg2)
     *arg2 = buffer;
 }
 
-void transpose_active_tetro(){
+void transpose_active_tetro(GameInstance* game){
     // Flips the array of the active tetromino along the diagonal (in place)
     // This is one of the steps in tetromino rotation
 
-    int n = active_tetro.dimensions;
-    for( int i = 0; i < n; i++)
-    {
-        for ( int j = i+1; j < n; j++ ) // only the upper is iterated
-        {
-            if(active_tetro.dimensions==3){
-                swap(&(tetro_dummy_3x3[i][j]), &(tetro_dummy_3x3[j][i]));}
-            else if(active_tetro.dimensions==4){
-                swap(&(tetro_dummy_4x4[i][j]), &(tetro_dummy_4x4[j][i]));}
+    int n = game->active_tetro.dimensions;
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            if (n == 3) {
+                swap(&(game->tetro_dummy_3x3[i][j]), &(game->tetro_dummy_3x3[j][i]));
+            } else if (n == 4) {
+                swap(&(game->tetro_dummy_4x4[i][j]), &(game->tetro_dummy_4x4[j][i]));
+            }
         }
     }
 }
 
-
-void reverse_active_tetro_row(int row){
+void reverse_active_tetro_row(GameInstance* game, int row) {
     // Reverse the given row in the active tetromino array (in place)
     // This is one of the steps in tetromino rotation
 
-    int n = active_tetro.dimensions;
+    int n = game->active_tetro.dimensions;
 
-    color_id (*arr_ptr)[n]; //pointer to this row in memory
+    color_id (*matrix)[n] = NULL; // pointer to this row in memory
 
-    if(n==3){
-        arr_ptr = &(tetro_dummy_3x3[row]); //point to the row in the 3x3 array
-    }
-    else if(n==4){
-        arr_ptr = &(tetro_dummy_4x4[row]); //point to the row in the 4x4 array
-    }
-    else{
-        printf("ERROR: reverse_active_tetro_row called with an array size other than 3 or 4: %d\n",n);
+    // Point to the correct dummy array inside the game instance
+    if (n == 3) {
+        matrix = game->tetro_dummy_3x3; // point to the row in the 3x3 array
+    } else if (n == 4) {
+        matrix = game->tetro_dummy_4x4; // point to the row in the 4x4 array
+    } else {
+        printf("ERROR: reverse_active_tetro_row called with an array size other than 3 or 4: %d\n", n);
         exit(1);
     }
 
-    // Reverse the row in the relevant array
-    for(int i = 0; i<n/2; i++)
-    {
-        int temp = (*arr_ptr)[i];
-        (*arr_ptr)[i] = (*arr_ptr)[n-i-1];
-        (*arr_ptr)[n-i-1] = temp;        
+    // Reverse the elements in the specified row
+    for (int i = 0; i < n / 2; i++) {
+        color_id temp = matrix[row][i];
+        matrix[row][i] = matrix[row][n - i - 1];
+        matrix[row][n - i - 1] = temp;
     }
 }
 
-void rotate_tetro_counterclockwise();
+void rotate_tetro_counterclockwise(GameInstance* game);
 // ^ tell compiler that this function will exist so it doesnt get mad when I call it before i define it.
 
-void update_orientation_cw(){
-    active_tetro.orientation++;
-    if(active_tetro.orientation>3){
-        active_tetro.orientation=0;
+void update_orientation_cw(tetrodata* tetro){
+    tetro->orientation++;
+    if(tetro->orientation>3){
+        tetro->orientation=0;
     }
 }
 
-void update_orientation_ccw(){
-    active_tetro.orientation--;
-    if(active_tetro.orientation<0){
-        active_tetro.orientation=3;
+void update_orientation_ccw(tetrodata* tetro){
+    tetro->orientation--;
+    if(tetro->orientation<0){
+        tetro->orientation=3;
     }
 }
 
-void move_tetro_like_this(int x, int y){
-    active_tetro.left_x+=x;
-    active_tetro.top_y+=y;
+void move_tetro_like_this(tetrodata* tetro, int x, int y){
+    tetro->left_x+=x;
+    tetro->top_y+=y;
 }
 
 // Tetromino rotation test cases taken from here:
 // https://www.reddit.com/r/Tetris/comments/bdu02w/i_made_some_srs_charts/
 
-void rotate_tetro_clockwise(){
+void rotate_tetro_clockwise(GameInstance* game){
 
-    if(active_tetro.dimensions==2){
+    if(game->active_tetro.dimensions==2){
         return; // O tetrominos don't rotate :)
     }
 
     //test 1 - Plain rotation, no offset.
 
     // 1. Transpose
-    transpose_active_tetro();
+    transpose_active_tetro(game);
 
     // 2. Reverse each row
-    for(int i=0; i<active_tetro.dimensions; i++){
-        reverse_active_tetro_row(i);
+    for(int i=0; i<game->active_tetro.dimensions; i++){
+        reverse_active_tetro_row(game, i);
     }
 
-    replot_active_tetro();
+    replot_active_tetro(game);
 
-    if(check_valid_state()){
-        update_orientation_cw();
+    if(check_valid_state(game)){
+        update_orientation_cw(&game->active_tetro);
         return;
     }
 
     // If the basic tetro rotation failed, we will start to iterate through the tests,
     // each test involves translating the tetromino in different ways.
 
-    int rotation_type_index = active_tetro.orientation;
+    int rotation_type_index = game->active_tetro.orientation;
 
     // iterate through each test
     for (int test_index=0; test_index<=3; test_index++){
         //printf("Running rotation test: %d\n",test_index);
-        move_tetro_like_this(rotation_tests_cw[active_tetro.tetro_index][rotation_type_index][test_index][0],
-                             rotation_tests_cw[active_tetro.tetro_index][rotation_type_index][test_index][1]);
-        replot_active_tetro();
+        move_tetro_like_this(&game->active_tetro,
+                             rotation_tests_cw[game->active_tetro.tetro_index][rotation_type_index][test_index][0],
+                             rotation_tests_cw[game->active_tetro.tetro_index][rotation_type_index][test_index][1]);
+        replot_active_tetro(game);
 
-        if(check_valid_state()){
+        if(check_valid_state(game)){
             //printf("This rotation test worked!\n");
             return;
         }
@@ -790,91 +841,94 @@ void rotate_tetro_clockwise(){
     //Never found a valid one, undo
     // (The 4th index in the rotation test inner array is movement instructions to get back to the original location)
     //printf("Never found a valid rotation, undoing it\n");
-    move_tetro_like_this(rotation_tests_cw[active_tetro.tetro_index][rotation_type_index][4][0],
-                         rotation_tests_cw[active_tetro.tetro_index][rotation_type_index][4][1]);
-    rotate_tetro_counterclockwise();
-    replot_active_tetro();
+    move_tetro_like_this(&game->active_tetro,
+                         rotation_tests_cw[game->active_tetro.tetro_index][rotation_type_index][4][0],
+                         rotation_tests_cw[game->active_tetro.tetro_index][rotation_type_index][4][1]);
+    rotate_tetro_counterclockwise(game);
+    replot_active_tetro(game);
 
 }
 
-void rotate_tetro_counterclockwise(){
+void rotate_tetro_counterclockwise(GameInstance* game){
     //printf("Rotate CCW called\n");
     //printf("Array before CCW:\n");
     //print_tetro_array();
 
-    if(active_tetro.dimensions==2){
+    if(game->active_tetro.dimensions==2){
         return;
     }
 
     // Test 1 - plain rotation, no offset
 
     // 1. Reverse each row
-    for(int i=0; i<active_tetro.dimensions; i++){
-        reverse_active_tetro_row(i);
+    for(int i=0; i<game->active_tetro.dimensions; i++){
+        reverse_active_tetro_row(game, i);
     }
     // 2. Transpose
-    transpose_active_tetro();
+    transpose_active_tetro(game);
 
-    replot_active_tetro();
+    replot_active_tetro(game);
 
-    if(check_valid_state()){
-        update_orientation_ccw();
+    if(check_valid_state(game)){
+        update_orientation_ccw(&game->active_tetro);
         return;
     }
     
     // Iterate through each test
     for (int test_index=0; test_index<=3; test_index++){
-        move_tetro_like_this(rotation_tests_ccw[active_tetro.tetro_index][active_tetro.orientation][test_index][0],
-                             rotation_tests_ccw[active_tetro.tetro_index][active_tetro.orientation][test_index][1]);
-        replot_active_tetro();
+        move_tetro_like_this(&game->active_tetro,
+                             rotation_tests_ccw[game->active_tetro.tetro_index][game->active_tetro.orientation][test_index][0],
+                             rotation_tests_ccw[game->active_tetro.tetro_index][game->active_tetro.orientation][test_index][1]);
+        replot_active_tetro(game);
 
-        if(check_valid_state()){
+        if(check_valid_state(game)){
             return;
         }
     }
 
     //Never found a valid one, undo
-    move_tetro_like_this(rotation_tests_cw[active_tetro.tetro_index][active_tetro.orientation][4][0],
-                         rotation_tests_cw[active_tetro.tetro_index][active_tetro.orientation][4][1]);
-    rotate_tetro_clockwise();
-    replot_active_tetro();
+    move_tetro_like_this(&game->active_tetro,
+                         rotation_tests_cw[game->active_tetro.tetro_index][game->active_tetro.orientation][4][0],
+                         rotation_tests_cw[game->active_tetro.tetro_index][game->active_tetro.orientation][4][1]);
+    rotate_tetro_clockwise(game);
+    replot_active_tetro(game);
 
     //printf("Array after CCW:\n");
     //print_tetro_array();
 }
 
-void generate_new_tetro();//so compiler doesn't yell at us
+void generate_new_tetro(GameInstance* game);//so compiler doesn't yell at us
 
-void hold_tetromino(){
+void hold_tetromino(GameInstance* game){
 
-    color_id tetromino_to_hold = active_tetro.type;
+    color_id tetromino_to_hold = game->active_tetro.type;
     
-    if(held_tetro){ //if there's currently a tetromino already in the hold
+    if(game->held_tetro){ //if there's currently a tetromino already in the hold
     // swap it
-        init_new_tetro(held_tetro);
-        replot_active_tetro();
+        init_new_tetro(game, game->held_tetro);
+        replot_active_tetro(game);
 
-        held_tetro = tetromino_to_hold;
+        game->held_tetro = tetromino_to_hold;
     }
     else {
         //otherwise, make a new one
-        held_tetro = tetromino_to_hold;
-        generate_new_tetro();
+        game->held_tetro = tetromino_to_hold;
+        generate_new_tetro(game);
     }
-    hold_eligible=0;
-    printf("Holding: tetro of type %d\n", held_tetro);
+    game->hold_eligible=0;
+    printf("Holding: tetro of type %d\n", game->held_tetro);
 }
 
 
-int move_timebuffer = 10;
-int released_y_button=1;
-int released_x_button=1;
-int released_up_button=1;
-int released_ltrig=1;
+// int move_timebuffer = 10;
+// int released_y_button=1;
+// int released_x_button=1;
+// int released_up_button=1;
+// int released_ltrig=1;
 
 char ltrig_text[10];
 
-int move_tetromino(){
+int move_tetromino(GameInstance* game){
 
     // https://cadcdev.sourceforge.net/docs/kos-2.0.0/group__controller__buttons.html
     // http://gamedev.allusion.net/docs/kos-2.0.0/structcont__state__t.html
@@ -894,74 +948,74 @@ int move_tetromino(){
         // the triggers on the sega dreamcast are analog triggers, not digital buttons,
         // so they range from 0-255 (inclusive)
         // I have the hold function trigger if it's at least half-pressed (128)
-        if(state->ltrig >= 128 && hold_eligible){
-            hold_tetromino();
-            hold_eligible=0;
+        if(state->ltrig >= 128 && game->hold_eligible){
+            hold_tetromino(game);
+            game->hold_eligible=0;
         }
 
-        if(move_timebuffer==0){
-            if((state->buttons & CONT_DPAD_UP) && released_up_button){
-                hard_drop();
+        if(game->move_timebuffer==0){
+            if((state->buttons & CONT_DPAD_UP) && game->released_up_button){
+                hard_drop(game);
                 //printf("LTRIG: %d\n", state->ltrig);
-                move_timebuffer=10;
-                released_up_button = 0;
+                game->move_timebuffer=10;
+                game->released_up_button = 0;
             }
             if(state->buttons & CONT_DPAD_DOWN){
                 // softdrop
-                tetro_fall(1);
-                move_timebuffer=10;
+                tetro_fall(game, 1);
+                game->move_timebuffer=10;
             }
             if(state->buttons & CONT_DPAD_LEFT){
-                tetro_left();
-                move_timebuffer=10;
+                tetro_left(game);
+                game->move_timebuffer=10;
             }
             if(state->buttons & CONT_DPAD_RIGHT){
-                tetro_right();
-                move_timebuffer=10;
+                tetro_right(game);
+                game->move_timebuffer=10;
             }
             
 
-            if( (state->buttons & CONT_Y) && released_y_button){
-                rotate_tetro_clockwise();
-                released_y_button=0;
+            if( (state->buttons & CONT_Y) && game->released_y_button){
+                rotate_tetro_clockwise(game);
+                game->released_y_button=0;
             }
-            if( (state->buttons & CONT_X) && released_x_button){
-                rotate_tetro_counterclockwise();
-                released_x_button=0;
+            if( (state->buttons & CONT_X) && game->released_x_button){
+                rotate_tetro_counterclockwise(game);
+                game->released_x_button=0;
             }
 
-            if( !(state->buttons & CONT_X) && !released_x_button){
-                released_x_button=1;
+            if( !(state->buttons & CONT_X) && !game->released_x_button){
+                game->released_x_button=1;
             }
-            if( !(state->buttons & CONT_Y) && !released_y_button){
-                released_y_button=1;
+            if( !(state->buttons & CONT_Y) && !game->released_y_button){
+                game->released_y_button=1;
             }
-            if ( !(state->buttons & CONT_DPAD_UP) && !released_up_button){
-                released_up_button = 1;
+            if ( !(state->buttons & CONT_DPAD_UP) && !game->released_up_button){
+                game->released_up_button = 1;
             }
 
             
         }
-        if(move_timebuffer>0){
-            move_timebuffer-=1;
+        if(game->move_timebuffer>0){
+            game->move_timebuffer-=1;
         }
 
     }
     return 0;
 }
 
-void generate_new_tetro(){
+void generate_new_tetro(GameInstance* game){
     color_id random_id = (rand() % 7)+1;
 
-    init_new_tetro(random_id);
-    replot_active_tetro();
+    init_new_tetro(game, random_id);
+    replot_active_tetro(game);
 
-    if(!check_valid_state()){
-        loss = 1;
+    if(!check_valid_state(game)){
+        game->loss = 1;
     }
 }
 
-void draw_field(){
+void draw_field(GameInstance* game){
     // One block is 20 pixels x 20 pixels
     // it is 20 blocks * 20 pixels tall = 400 pixels
     // and 10 blocks * 20 pixels wide = 200 pixels
@@ -987,36 +1041,36 @@ void draw_field(){
     //now draw the blocks
     for(int row=3; row<23; row=row+1){
         for(int col=1;col<11; col=col+1){
-            if (field[row][col]){
+            if (game->field[row][col]){
                 block_x = field_left + (20*(col-1)) + 10;
                 block_y = field_top + (20*(row-3)) + 10;
-                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_enum(field[row][col]));
+                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_enum(game->field[row][col]));
             }
-            if (temp_field[row][col]){
+            if (game->temp_field[row][col]){
                 block_x = field_left + (20*(col-1)) + 10;
                 block_y = field_top + (20*(row-3)) + 10;
-                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_enum(temp_field[row][col]));
+                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_enum(game->temp_field[row][col]));
             }
         }
     }
 }
 
-void clear_line(int rownum){
+void clear_line(GameInstance* game, int rownum){
     // Copy every line above the cleared line down 1 row
     for(int row=rownum; row>=4; row--){
         for(int cell=1; cell<=10; cell++){
-            field[row][cell] = field[row-1][cell];
+            game->field[row][cell] = game->field[row-1][cell];
         }
     }
 
-    field[3][0]=1;
+    game->field[3][0]=1;
     for(int cell=1; cell<=10; cell++){
-        field[3][cell]=0;
+        game->field[3][cell]=0;
     }
-    field[3][11]=1;
+    game->field[3][11]=1;
 }
 
-void check_lines(){
+void check_lines(GameInstance* game){
     //printf("Checking lines...\n");
     int found_empty_tile=0;
     
@@ -1026,7 +1080,7 @@ void check_lines(){
         int cell=1;
         while(cell<=10 && !found_empty_tile){
             //printf("%d ", field[row][cell]);
-            if(!field[row][cell]){
+            if(!game->field[row][cell]){
                 found_empty_tile=1;
             }
             cell++;
@@ -1035,33 +1089,33 @@ void check_lines(){
         //printf("\n");
         if(!found_empty_tile){
             //printf("Found full line: %d\n",row);
-            clear_line(row);
-            line_clears++;
+            clear_line(game, row);
+            game->line_clears++;
             new_line_clears++;
-            printf("Total line clears: %d\n",line_clears);
+            printf("Total line clears: %d\n",game->line_clears);
         }
         found_empty_tile=0;
     }
     if(new_line_clears==1){
-        score = score + (level * 100);
+        game->score += game->level * 100;
     }
     else if(new_line_clears==2){
-        score = score + (level * 300);
+        game->score += game->level * 300;
     }
     else if(new_line_clears==3){
-        score = score + (level * 500);
+        game->score += game->level * 500;
     }
     else if(new_line_clears==4){
         printf("Tetris!");
-        score = score + (level * 800);
+        game->score += game->level * 800;
     }
 
-    if(level < 15){
-        int new_level = ((line_clears-(line_clears%10))/10)+1;
-        if(new_level>level){
-            level=new_level;
+    if(game->level < 15){
+        int new_level = ((game->line_clears-(game->line_clears%10))/10)+1;
+        if(new_level>game->level){
+            game->level=new_level;
             //falltime=85-(new_level*5);
-            falltime= 93 - (new_level*6);
+            game->falltime= 93 - (new_level*6);
         }
     }
     // FALL TIME CALCULATION:
@@ -1071,8 +1125,8 @@ void check_lines(){
     // falltime = -6*level + 93
 }
 
-void draw_hold(){
-    if(!held_tetro){
+void draw_hold(GameInstance* game){
+    if(!game->held_tetro){
         return;
     }
 
@@ -1084,10 +1138,10 @@ void draw_hold(){
 
     int dimensions;
 
-    if(held_tetro==LIGHT_BLUE){
+    if(game->held_tetro==LIGHT_BLUE){
         dimensions=4;
     }
-    else if(held_tetro==YELLOW){
+    else if(game->held_tetro==YELLOW){
         dimensions=2;
     }
     else{
@@ -1095,7 +1149,7 @@ void draw_hold(){
     }
     color_id (*arr_ptr)[dimensions][dimensions];
 
-    switch(held_tetro){
+    switch(game->held_tetro){
         case LIGHT_BLUE:
             arr_ptr = &TETRO_I;
             break;
@@ -1123,7 +1177,7 @@ void draw_hold(){
             if((*arr_ptr)[row][col]){
                 block_x= hold_left + (20*(col-1)) + 10;
                 block_y = hold_top + (20*(row-1)) + 10;
-                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_enum(held_tetro));
+                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_enum(game->held_tetro));
             }
         }
     }
@@ -1150,22 +1204,22 @@ char score_string[10];
 char lines_string[10];
 char level_string[10];
 
-void draw_hud(){
+void draw_hud(GameInstance* game){
 
     draw_text(50,300,"Score");
     // draw score
-    sprintf(score_string, "%ld", score);
+    sprintf(score_string, "%ld", game->score);
     draw_text(50,340,score_string);
 
     draw_text(500,200,"Level");
-    sprintf(level_string, "%d", level);
+    sprintf(level_string, "%d", game->level);
     draw_text(500,240,level_string);
 
     draw_text(500,300,"Lines");
-    sprintf(lines_string, "%d", line_clears);
+    sprintf(lines_string, "%d", game->line_clears);
     draw_text(500,340,lines_string);
 
-    draw_hold();
+    draw_hold(game);
 
     /*
     maple_device_t *cont;
@@ -1182,12 +1236,13 @@ void draw_hud(){
 
 //void move_active_tetro_downwards
 
-void check_reset_button(){
+void check_reset_button(GameInstance* game){
     maple_device_t *controller = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
     cont_state_t *controllerState = (cont_state_t*) maple_dev_status(controller);
 
     if (controllerState->buttons & CONT_START){
-        initiate_game();
+        // initiate_game();
+        init_game_instance(game);
     }
 
 }
@@ -1213,28 +1268,28 @@ void check_pause_button(){
 //int fall_timer = 93;
 //int first_run=1;
 
-void draw_frame_gameplay(){
+void draw_frame_gameplay(GameInstance* game){
 
     //check_buttons();
     check_pause_button();
 
-    if (!loss && !paused){
-        move_tetromino();
+    if (!game->loss && !paused){
+        move_tetromino(game);
 
-        fall_timer=fall_timer-1;
+        game->fall_timer -= 1;
 
-        if(active_tetro.set==1 || first_run==1){
-            check_lines();
-            generate_new_tetro();
-            hold_eligible=1;
-            fall_timer=falltime;
-            first_run=0;
+        if(game->active_tetro.set==1 || game->first_run==1){
+            check_lines(game);
+            generate_new_tetro(game);
+            game->hold_eligible=1;
+            game->fall_timer=game->falltime;
+            game->first_run=0;
             //printf("Generating new tetro...");
         }
 
-        if(fall_timer<=0){
-            fall_timer=falltime;
-            tetro_fall(0);
+        if(game->fall_timer<=0){
+            game->fall_timer=game->falltime;
+            tetro_fall(game, 0);
         }
     }
 
@@ -1256,16 +1311,16 @@ void draw_frame_gameplay(){
     draw_vert_line(100, SCREEN_HEIGHT-100, 100, COLOR_WHITE); // white - left
     */
     
-    draw_field();
+    draw_field(game);
 
     //draw_text(100,100,"What's going on?");
     //draw_text(200,200,"Hello there!");
-    draw_hud();
+    draw_hud(game);
 
-    if(loss){
+    if(game->loss){
         draw_text(50,200,"You lost!");
         draw_text(50,250,"Press START to reset");
-        check_reset_button();
+        check_reset_button(game);
     }
 
     if (paused){
@@ -1281,11 +1336,18 @@ int main(){
 
     int exitProgram = 0;
 
-    init();
-    initiate_game();
 
-    printf("Hello world!\n");
-    printf("How are you today? :)\n");
+
+    init();
+
+    // use this for logging/debugging
+    dbglog(DBG_INFO, "HELLO WORLD!!!\n");
+
+    // printf("HELLO WORLD!!!!!!!!!!!"); doesnt work
+
+    GameInstance game;
+    // initiate_game();
+    init_game_instance(&game);
 
     while(!exitProgram){
         /*
@@ -1300,7 +1362,7 @@ int main(){
             exitProgram = 1;
         }
         */
-        draw_frame_gameplay();
+        draw_frame_gameplay(&game);
     }
 
     // maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);

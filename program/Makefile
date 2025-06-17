@@ -14,6 +14,8 @@ OBJS = main.o romdisk.o
 # from the named dir.
 KOS_ROMDISK_DIR = romdisk
 
+KOS_CFLAGS += -DDEBUG
+
 # The rm-elf step is to remove the target before building, to force the
 # re-creation of the rom disk.
 all: rm-elf $(TARGET)
