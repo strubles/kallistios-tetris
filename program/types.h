@@ -37,34 +37,15 @@ typedef enum {
     LEFT
 } Rotation;
 
-// fixme: remove later and replace with BlockColor
-typedef enum {
-    EMPTY = 0,
-    RED = 1, // Z
-    ORANGE = 2, // L
-    YELLOW = 3, // O
-    GREEN = 4, // S
-    LIGHT_BLUE = 5, // I
-    DARK_BLUE = 6, // J
-    PURPLE = 7 // T
-} color_id;
-
-// fixme: remove and replace with Tetrodata
-// typedef struct {
-//     int top_y;
-//     int left_x;
-//     color_id type;
-//     int size;
-//     Rotation orientation;
-//     int set;
-//     int tetro_index;
-// } Tetrodata;
-
 typedef struct {
     TetrominoType type;
     BlockColor color;
     int size;               // 2, 3, or 4
+
+    // Array representing what the tetromino looks like in its default state
+    // This is read-only and is copied over to the dummy array in the game instance's active_tetro
     int shape[4][4];
+
     int perform_kicks; // bool
     int (*kicks_cw)[5][2];
     int (*kicks_ccw)[5][2];
@@ -79,6 +60,12 @@ typedef struct {
     TetrominoInfo *info;
     Rotation orientation;
     int set;
+
+    // Array for holding the real current tetromino.
+    // When a new tetromino is spawned, the relevant tetro array (TETRO_Z, TETRO_L, etc)
+    // is copied into it from its TetrominoInfo.
+    // Then, the dummy array can be rotated, without effecting how the next
+    // tetromino of the same type will spawn in.
     int dummy[4][4]; // holder (rotated shapes are stored here)
 } Tetrodata;
 
@@ -93,18 +80,6 @@ typedef struct {
 
     BlockColor hold_field[4][4];
 
-    // Arrays for holding the real current tetromino.
-    // When a new tetromino is spawned, the relevant tetro array (TETRO_Z, TETRO_L, etc)
-    // is copied into it.
-    // Then, these "dummy" arrays can be rotated, without effecting how the next
-    // tetromino of the same type will spawn in.
-    // There are 3 of them because while most tetrominos go in the 3x3 one, the I needs 4x4 and
-    // the O needs 2x2.
-	// color_id tetro_dummy_4x4[4][4];
-	// color_id tetro_dummy_3x3[3][3];
-	// color_id tetro_dummy_2x2[2][2];
-
-    // fixme: possibly make held_tetro a ptr to a TetrominoInfo
     TetrominoInfo *held_tetro;
     int hold_eligible;  // whether we will let the player perform a tetromino hold
     int has_drawn_new_tetro;
@@ -113,7 +88,12 @@ typedef struct {
     int line_clears;
     int fall_timer;
     int falltime; // what we reset the timer to after every tetro fall
+
+    // This holds data on the current active tetromino. It is continuously overwritten with the next
+    // tetromino as the old tetromino get committed to the field matrix and doesn't need to be kept
+    // track of anymore.
     Tetrodata active_tetro;
+
     int first_run;
     int loss;
     int move_timebuffer;
