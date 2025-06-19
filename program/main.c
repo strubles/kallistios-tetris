@@ -20,10 +20,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "types.h"
-
-#include "display.c"
+#include "main.h"
 
 // font stuff
 #include <plx/font.h>
@@ -252,6 +252,15 @@ KOS_INIT_ROMDISK(romdisk);
 float position_x = SCREEN_WIDTH/2;
 float position_y = SCREEN_HEIGHT/2;
 
+void dbg_print_bag(GameInstance* game){
+    dbglog(DBG_INFO, "Bag: [");
+
+    for (int i=0; i<7; i++) {
+        dbglog(DBG_INFO, "%d, ", game->bag[i]);
+    }
+    dbglog(DBG_INFO, "]\nCurrent index: %d (tetromino num: %d)\n", game->bag_index, game->bag[game->bag_index]);
+}
+
 void init_game_instance(GameInstance* game){
     paused = 0;
     memset(game->temp_field, COLOR_NONE, sizeof(game->temp_field));
@@ -273,6 +282,13 @@ void init_game_instance(GameInstance* game){
     game->released_x_button=1;
     game->released_up_button=1;
     game->released_ltrig=1;
+    game->bag_index=0;
+
+    // fill tetromino bag
+    for (int i=1; i<8; i++) {
+        game->bag[i-1] = i;
+    }
+    shuffle_bag(game);
 }
 
 ColorRgba get_argb_from_blockcolor(BlockColor color){
@@ -572,9 +588,6 @@ void reverse_active_tetro_row(GameInstance* game, int row) {
     }
 }
 
-void rotate_tetro_counterclockwise(GameInstance* game);
-// ^ tell compiler that this function will exist so it doesnt get mad when I call it before i define it.
-
 void update_orientation_cw(Tetrodata* tetro){
     tetro->orientation++;
     if(tetro->orientation>3){
@@ -704,8 +717,6 @@ void rotate_tetro_counterclockwise(GameInstance* game){
     replot_active_tetro(game);
 }
 
-void generate_new_tetro(GameInstance* game);//so compiler doesn't yell at us
-
 void hold_tetromino(GameInstance* game){
 
     TetrominoInfo *tetromino_to_hold = game->active_tetro.info;
@@ -802,7 +813,16 @@ int move_tetromino(GameInstance* game){
 }
 
 void generate_new_tetro(GameInstance* game){
-    TetrominoType random_id = (rand() % 7)+1;
+    // TetrominoType random_id = (rand() % 7)+1;
+    // dbg_print_bag(game);
+    TetrominoType random_id = game->bag[game->bag_index];
+
+    game->bag_index++;
+    if (game->bag_index==7) {
+        game->bag_index=0;
+        shuffle_bag(game);
+    }
+
 
     init_new_tetro(game, random_id);
     replot_active_tetro(game);
@@ -884,7 +904,7 @@ void check_lines(GameInstance* game){
             clear_line(game, row);
             game->line_clears++;
             new_line_clears++;
-            printf("Total line clears: %d\n",game->line_clears);
+            // printf("Total line clears: %d\n",game->line_clears);
         }
         found_empty_tile=0;
     }
@@ -898,7 +918,7 @@ void check_lines(GameInstance* game){
         game->score += game->level * 500;
     }
     else if(new_line_clears==4){
-        printf("Tetris!");
+        // printf("Tetris!");
         game->score += game->level * 800;
     }
 
@@ -914,6 +934,15 @@ void check_lines(GameInstance* game){
     // Level 15 - falls every 2 frames
     // Equation:  y = -6x + 93
     // falltime = -6*level + 93
+}
+
+void shuffle_bag(GameInstance* game) {
+    for (int i = 6; i > 0; i--) {
+        int j = rand() % (i + 1); // pick random index from 0 to i
+        TetrominoType temp = game->bag[i];
+        game->bag[i] = game->bag[j];
+        game->bag[j] = temp;
+    }
 }
 
 void draw_hold(GameInstance* game){
@@ -1057,6 +1086,7 @@ void draw_frame_gameplay(GameInstance* game){
 }
 
 int main(){
+    srand(time(NULL));
 
     int exitProgram = 0;
 

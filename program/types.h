@@ -102,6 +102,10 @@ typedef struct {
     int released_x_button;
     int released_up_button;
     int released_ltrig;
+
+    TetrominoType bag[7];
+    int bag_index;
+
 } GameInstance;
 
 #endif // TYPES_H
