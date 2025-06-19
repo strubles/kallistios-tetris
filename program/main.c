@@ -40,55 +40,46 @@ plx_font_t * fnt;
 plx_fcxt_t * fnt_cxt;
 point_t w;
 
-// define kick array constants
-// When a tetromino is rotated, Tetris does a series of tests to find a valid (open) position to rotate the tetromino into.
-// The tests are done in order and the first test that succeeds determines where the tetromino is placed.
-// If they all fail, the rotation is cancelled.
-// The first test is a simple in place 90 degree rotation.
-// Tests 2-5 involve nudging the tetromino left, right, up, and down by a block or two to find a free spot.
-// This 3-dimensional array represents the (x, y) offsets of each test.
-// Because the tests are done in order, each pair of (x,y) represents the position RELATIVE TO THE LAST TEST,
-// not relative to the first test or the original position.
-// The last inner array (undo) represents the offset to get from test 5 back to the first test position, which is needed to cancel the rotation
-// when all tests fail.
+// Guideline SRS wall kick test relative offsets
 
 // 1st level: the rotation type
 // 2nd level: the test number
-// 3rd level: x, y offset
+// 3rd level: x, y offset relative to the last test
 
 // kicks_cw and kicks_ccw are for all tetrominos except I
 const int kicks_cw[4][5][2] = {
-    // Test 2, 3, 4, 5, and undo.
-    { {-1,0}, {0,-1}, {1,3}, {-1,0}, {1,-2} }, // 0 to R
-    { {1,0}, {0,1}, {-1,-3}, {1,0}, {-1,2} }, // R to 2
-    { {1,0}, {0,-1}, {-1,3}, {1,0}, {-1,-2} }, // 2 to L
-    { {-1,0}, {0,1}, {1,-3}, {-1,0}, {1,2} } // L to 0
+    //test2    test3    test4    test5    undo
+    { {-1, 0}, { 0, 1}, { 1,-3}, {-1, 0}, { 1, 2} }, // 0 -> R
+    { { 1, 0}, { 0,-1}, {-1, 3}, { 1, 0}, {-1,-2} }, // R -> 2
+    { { 1, 0}, { 0, 1}, {-1,-3}, { 1, 0}, {-1, 2} }, // 2 -> L
+    { {-1, 0}, { 0,-1}, { 1, 3}, {-1, 0}, { 1,-2} }  // L -> 0
 };
 const int kicks_ccw[4][5][2] = {
-    { {1, 0}, {0, -1}, {-1,3}, {1,0}, {-1,-2} }, //0 to L
-    { {1, 0}, {0, 1}, {-1,-3}, {1,0}, {-1,2} }, // R to 0
-    { {-1, 0}, {0, -1}, {1, 3}, {-1, 0}, {1,-2} }, //2 to R
-    { {-1, 0}, {0, 1}, {1,-3}, {-1,0}, {1,2} } //L to 2
+    { { 1, 0}, { 0, 1}, {-1,-3}, { 1, 0}, {-1, 2} }, // 0 -> L
+    { {-1, 0}, { 0,-1}, { 1, 3}, {-1, 0}, { 1,-2} }, // L -> 2
+    { {-1, 0}, { 0, 1}, { 1,-3}, {-1, 0}, { 1, 2} }, // 2 -> R
+    { { 1, 0}, { 0,-1}, {-1, 3}, { 1, 0}, {-1,-2} }  // R -> 0
 };
 
 // kicks_cw_i and kicks_ccw_i apply only to Light Blue/I tetrominos
 const int kicks_cw_i[4][5][2] = {
-    { {-2,0}, {3,0}, {-3,1}, {3,-3}, {-1,2} }, // 0 to R
-    { {-1,0}, {3,0}, {-3,-2}, {3,3}, {-2,-1} }, // R to 2
-    { {2,0}, {-3,0}, {3,-1}, {-3,3}, {1,-2} }, // 2 to L
-    { {1,0}, {-3,0}, {3,2}, {-3,-3}, {2,1} } // L to 0
+    { {-2, 0}, { 3, 0}, {-3,-1}, { 3, 3}, {-1,-2} }, // 0 -> R
+    { {-1, 0}, { 3, 0}, {-3, 2}, { 3,-3}, {-2, 1} }, // R -> 2
+    { { 2, 0}, {-3, 0}, { 3, 1}, {-3,-3}, { 1, 2} }, // 2 -> L
+    { { 1, 0}, {-3, 0}, { 3,-2}, {-3, 3}, { 2,-1} }  // L -> 0
 };
 const int kicks_ccw_i[4][5][2] = {
-    { {-1, 0}, {3, 0}, {-3,-2}, {3,-3}, {-2,-1} }, //0 to L
-    { {2, 0}, {-3, 0}, {3,-1}, {-3,3}, {1,-2} }, // R to 0
-    { {1, 0}, {-3, 0}, {3, 2}, {-3,-3}, {2,1} }, //2 to R
-    { {-2, 0}, {3, 0}, {-3, 1}, {3, -3}, {-1,2} } //L to 2  
+    { {-1, 0}, { 3, 0}, {-3, 2}, { 3,-3}, {-2, 1} }, // 0 -> L
+    { {-2, 0}, { 3, 0}, {-3,-1}, { 3, 3}, {-1,-2} }, // R -> 0
+    { { 1, 0}, {-3, 0}, { 3,-2}, {-3, 3}, { 2,-1} }, // 2 -> R
+    { { 2, 0}, {-3, 0}, { 3, 1}, {-3,-3}, { 1, 2} }  // L -> 2
 };
 
 // define tetromino info array constant
 const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     [TETRO_I] = {
         .type = TETRO_I,
+        .symbol = 'I',
         .color = COLOR_CYAN,
         .size = 4,
         .shape = {
@@ -101,10 +92,11 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
         .kicks_cw = kicks_cw_i,
         .kicks_ccw = kicks_ccw_i,
         .initial_left_x = 4,
-        .initial_top_y = 2
+        .initial_top_y = 3
     },
     [TETRO_O] = {
         .type = TETRO_O,
+        .symbol = 'O',
         .color = COLOR_YELLOW,
         .size = 2,
         .shape = {
@@ -119,6 +111,7 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     },
     [TETRO_T] = {
         .type = TETRO_T,
+        .symbol = 'T',
         .color = COLOR_PURPLE,
         .size = 3,
         .shape = {
@@ -134,6 +127,7 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     },
     [TETRO_S] = {
         .type = TETRO_S,
+        .symbol = 'S',
         .color = COLOR_GREEN,
         .size = 3,
         .shape = {
@@ -149,6 +143,7 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     },
     [TETRO_Z] = {
         .type = TETRO_Z,
+        .symbol = 'Z',
         .color = COLOR_RED,
         .size = 3,
         .shape = {
@@ -164,6 +159,7 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     },
     [TETRO_J] = {
         .type = TETRO_J,
+        .symbol = 'J',
         .color = COLOR_BLUE,
         .size = 3,
         .shape = {
@@ -179,6 +175,7 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     },
     [TETRO_L] = {
         .type = TETRO_L,
+        .symbol = 'L',
         .color = COLOR_ORANGE,
         .size = 3,
         .shape = {
@@ -212,13 +209,17 @@ ColorRgba RGBA_PURPLE = {255, 0, 255, 255};
 ColorRgba RGBA_WHITE = {255, 255, 255, 255};
 ColorRgba RGBA_BLACK = {0, 0, 0, 255};
 
-//setting up the field data structure.
-BlockColor field_backup[24][12] = {
+// setting up the field data structure
+// Only rows 3-22 and columns 1-10 are visible to player
+
+// Border of 1's (cyan blocks) outside of player's view
+// enables easy wall/floor collision & loss detection
+const BlockColor field_backup[24][12] = {
 //    0       1  2  3  4  5  6  7  8  9  10      11
     { 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 0
     { 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 1
     { 1, /**/ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, /**/ 1}, // 2
-    /**********************************************/ //Top boundary of visible area
+    /**********************************************/
     { 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 3
     { 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 4
     { 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 5
@@ -239,14 +240,10 @@ BlockColor field_backup[24][12] = {
     { 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 20
     { 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 21
     { 1, /**/ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /**/ 1}, // 22
-    /**********************************************/ //Bottom boundary of visible area
+    /**********************************************/
     { 1, /**/ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, /**/ 1}, // 23
-//        ^--- Left boundary of vis. area     ^--- Right boundary of visible area
+
 };
-// The border of 1's is interpreted as tetromino blocks (cyan ones to be exact) but are not
-// rendered to the screen and are ignored when checking for filled lines. The purpose of
-// this is so I can prevent tetrominos from going off the screen in the same exact way that I
-// prevent tetrominos from overlapping/intersecting with other tetrominos.
 
 extern uint8 romdisk[];
 KOS_INIT_FLAGS(INIT_DEFAULT);
@@ -445,7 +442,7 @@ void init_new_tetro(GameInstance* game, TetrominoType type){
 
 void replot_active_tetro(GameInstance* game){
     // Adds active_tetro to the temp_field matrix, in the position and
-    // orientation specified by the data members in active_tetro.
+    // orientation specified by the data members in active_tetro
     // You have to do this before you check the validity of the fields.
 
     memset(game->temp_field, COLOR_NONE, sizeof(game->temp_field));
@@ -484,8 +481,7 @@ int check_valid_state(GameInstance* game){
     // Checks for overlapping tiles/blocks between the temp_field (the active tetromino) and
     // the field (all other tetrominos and the edges of the screen).
     // Returns 0 (false) if an overlap is found (state is invalid).
-    // Returns 1 (true) if an overlap is NOT found (state is valid).
-    // It does not undo it, it just determines if it's valid.
+    // Returns 1 (true) if an overlap is NOT found (state is valid)
 
     for(int row=0; row<24; row++){
         for(int cell=0; cell<12; cell++){
@@ -552,7 +548,7 @@ void swap(int* arg1, int* arg2)
 
 void transpose_active_tetro(GameInstance* game){
     // Flips the array of the active tetromino along the diagonal (in place)
-    // This is one of the steps in tetromino rotation
+    // (for tetromino rotation)
 
     int n = game->active_tetro.info->size;
     for (int i = 0; i < n; i++) {
@@ -564,7 +560,7 @@ void transpose_active_tetro(GameInstance* game){
 
 void reverse_active_tetro_row(GameInstance* game, int row) {
     // Reverse the given row in the active tetromino array (in place)
-    // This is one of the steps in tetromino rotation
+    // (for tetromino rotation)
 
     int n = game->active_tetro.info->size;
 
@@ -598,12 +594,9 @@ void move_tetro_like_this(Tetrodata* tetro, int x, int y){
     tetro->top_y+=y;
 }
 
-// Tetromino rotation test cases taken from here:
-// https://www.reddit.com/r/Tetris/comments/bdu02w/i_made_some_srs_charts/
-
 void rotate_tetro_clockwise(GameInstance* game){
     if (game->active_tetro.type == TETRO_O) {
-        return; // O tetrominos don't rotate :)
+        return;
     }
 
     // first test is plain rotation, no offset
@@ -618,15 +611,16 @@ void rotate_tetro_clockwise(GameInstance* game){
 
     if (check_valid_state(game)) {
         update_orientation_cw(&game->active_tetro);
+        // dbglog(DBG_INFO, "%c tetromino rotated cw with no kicks\n", game->active_tetro.info->symbol);
         return;
     }
 
     TetrominoInfo *info = game->active_tetro.info;
-    // If the basic tetro rotation failed, we will start to iterate through the kick tests,
-    // each test involves translating the tetromino in different ways.
+
+    // If the basic rotation failed, iterate through the kick tests til we find a working one
+
     int rotation_type_index = game->active_tetro.orientation;
 
-    // iterate through each test
     for (int test_index = 0; test_index <= 3; test_index++) {
 
         move_tetro_like_this(
@@ -639,12 +633,14 @@ void rotate_tetro_clockwise(GameInstance* game){
 
         if (check_valid_state(game)) {
             update_orientation_cw(&game->active_tetro);
+            // dbglog(DBG_INFO, "%c tetromino rotated on test %d (%d, %d)\n", game->active_tetro.info->symbol, test_index+2, info->kicks_cw[rotation_type_index][test_index][0], info->kicks_cw[rotation_type_index][test_index][1]);
             return;
         }
     }
 
     // Never found a valid one; undo
-    // (The 4th index in the rotation test inner array is movement instructions to get back to the original location)
+    // (The last "test" is actually an "undo" offset to get back to the original location)
+    // dbglog(DBG_INFO, "%c tetromino failed all rotations", game->active_tetro.info->symbol);
 
     move_tetro_like_this(&game->active_tetro,
                          info->kicks_cw[rotation_type_index][4][0],
@@ -660,10 +656,8 @@ void rotate_tetro_clockwise(GameInstance* game){
 
 void rotate_tetro_counterclockwise(GameInstance* game){
     if (game->active_tetro.type == TETRO_O) {
-        return; // O tetrominos don't rotate :)
+        return;
     }
-
-    // first test is plain rotation, no offset
 
     // 1. reverse rows
     for (int i=0; i < game->active_tetro.info->size; i++) {
@@ -680,11 +674,8 @@ void rotate_tetro_counterclockwise(GameInstance* game){
     }
 
     TetrominoInfo *info = game->active_tetro.info;
-    // If the basic tetro rotation failed, we will start to iterate through the kick tests,
-    // each test involves translating the tetromino in different ways.
     int rotation_type_index = game->active_tetro.orientation;
 
-    // iterate through each test
     for (int test_index = 0; test_index <= 3; test_index++) {
 
         move_tetro_like_this(
@@ -700,9 +691,6 @@ void rotate_tetro_counterclockwise(GameInstance* game){
             return;
         }
     }
-
-    // Never found a valid one; undo
-    // (The 4th index in the rotation test inner array is movement instructions to get back to the original location)
 
     move_tetro_like_this(&game->active_tetro,
                          info->kicks_ccw[rotation_type_index][4][0],
@@ -756,8 +744,7 @@ int move_tetromino(GameInstance* game){
             return 0;
         }
 
-        // the triggers on the sega dreamcast are analog triggers, not digital buttons,
-        // so they range from 0-255 (inclusive)
+        // the triggers on the sega dreamcast are analog triggers that range from 0-255
         // I have the hold function trigger if it's at least half-pressed (128)
         if(state->ltrig >= 128 && game->hold_eligible){
             hold_tetromino(game);
@@ -827,7 +814,7 @@ void generate_new_tetro(GameInstance* game){
 
 void draw_field(GameInstance* game){
     // One block is 20 pixels x 20 pixels
-    // it is 20 blocks * 20 pixels tall = 400 pixels
+    // field is 20 blocks * 20 pixels tall = 400 pixels
     // and 10 blocks * 20 pixels wide = 200 pixels
 
     //draw edges
@@ -974,7 +961,6 @@ char level_string[10];
 void draw_hud(GameInstance* game){
 
     draw_text(50,300,"Score");
-    // draw score
     sprintf(score_string, "%ld", game->score);
     draw_text(50,340,score_string);
 

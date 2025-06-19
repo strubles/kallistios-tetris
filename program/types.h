@@ -41,6 +41,7 @@ typedef struct {
     TetrominoType type;
     BlockColor color;
     int size;               // 2, 3, or 4
+    char symbol; // for debugging
 
     // Array representing what the tetromino looks like in its default state
     // This is read-only and is copied over to the dummy array in the game instance's active_tetro
