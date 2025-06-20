@@ -58,7 +58,7 @@ typedef struct {
     TetrominoType type;
     int left_x;
     int top_y;
-    TetrominoInfo *info;
+    const TetrominoInfo *info;
     Rotation orientation;
     int set;
 
