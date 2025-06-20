@@ -71,6 +71,36 @@ typedef struct {
 } Tetrodata;
 
 typedef struct {
+    int current;
+    int previous;
+
+    int pressed;       // true while held
+    int just_pressed;  // true only on the frame it was pressed
+    int just_released; // true only on the frame it was released
+} ButtonState;
+
+typedef struct {
+    int port;
+    ButtonState dpad_up;
+    ButtonState dpad_down;
+    ButtonState dpad_left;
+    ButtonState dpad_right;
+    ButtonState button_a;
+    ButtonState button_b;
+    ButtonState button_x;
+    ButtonState button_y;
+    ButtonState button_start;
+
+    // triggers range from 0 to 255
+    int trigger_left;
+    int trigger_right;
+
+    // joystick ranges from -128 to 127 for each axis
+    int joy_x;
+    int joy_y;
+} InputState;
+
+typedef struct {
     BlockColor field[24][12];
 
     // This variable an empty version of the field matrix. It is where the current active tetromino is put.
@@ -81,7 +111,7 @@ typedef struct {
 
     BlockColor hold_field[4][4];
 
-    TetrominoInfo *held_tetro;
+    const TetrominoInfo *held_tetro;
     int hold_eligible;  // whether we will let the player perform a tetromino hold
     int has_drawn_new_tetro;
     long int score;
@@ -105,6 +135,8 @@ typedef struct {
 
     TetrominoType bag[7];
     int bag_index;
+
+    InputState input;
 
 } GameInstance;
 

@@ -4,5 +4,6 @@
 #include "types.h"
 
 void dbg_print_bag(GameInstance* game);
+void dbg_print_controller(InputState* input);
 
 #endif

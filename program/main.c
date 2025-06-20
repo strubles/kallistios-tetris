@@ -26,6 +26,7 @@
 #include "main.h"
 #include "constants.h"
 #include "debug.h"
+#include "input.h"
 
 // font stuff
 #include <plx/font.h>
@@ -91,7 +92,6 @@ ColorRgba get_argb_from_blockcolor(BlockColor color){
         case COLOR_PURPLE:
             return RGBA_PURPLE;
         default:
-            // printf("Get_argb_from_enum provided with invalid enum: %d\n",id);
             return RGBA_WHITE;
     }
 }
@@ -155,7 +155,6 @@ void draw_square(float left, float right, float top, float bottom, ColorRgba arg
     // y2 = bottom
 
     if(top>bottom) {
-        //printf("Warning: draw_square received a 'top' paramater that's greater than 'bottom', swapping\n");
         float swap_y;
         swap_y = top;
         top = bottom;
@@ -163,7 +162,6 @@ void draw_square(float left, float right, float top, float bottom, ColorRgba arg
     }
 
     if(left>right) {
-        //printf("Warning: draw_square received a 'left' paramater that's greater than 'right', swapping\n");
         float swap_x;
         swap_x = left;
         left = right;
@@ -246,7 +244,7 @@ void replot_active_tetro(GameInstance* game){
 
     memset(game->temp_field, COLOR_NONE, sizeof(game->temp_field));
 
-    TetrominoInfo *info = game->active_tetro.info;
+    const TetrominoInfo *info = game->active_tetro.info;
 
     for (int row=0; row<info->size; row++){
         for (int cell=0; cell<info->size; cell++){
@@ -409,7 +407,7 @@ void rotate_tetro_clockwise(GameInstance* game){
         return;
     }
 
-    TetrominoInfo *info = game->active_tetro.info;
+    const TetrominoInfo *info = game->active_tetro.info;
 
     // If the basic rotation failed, iterate through the kick tests til we find a working one
 
@@ -434,7 +432,6 @@ void rotate_tetro_clockwise(GameInstance* game){
 
     // Never found a valid one; undo
     // (The last "test" is actually an "undo" offset to get back to the original location)
-    // dbglog(DBG_INFO, "%c tetromino failed all rotations", game->active_tetro.info->symbol);
 
     move_tetro_like_this(&game->active_tetro,
                          info->kicks_cw[rotation_type_index][4][0],
@@ -467,7 +464,7 @@ void rotate_tetro_counterclockwise(GameInstance* game){
         return;
     }
 
-    TetrominoInfo *info = game->active_tetro.info;
+    const TetrominoInfo *info = game->active_tetro.info;
     int rotation_type_index = game->active_tetro.orientation;
 
     for (int test_index = 0; test_index <= 3; test_index++) {
@@ -500,7 +497,7 @@ void rotate_tetro_counterclockwise(GameInstance* game){
 
 void hold_tetromino(GameInstance* game){
 
-    TetrominoInfo *tetromino_to_hold = game->active_tetro.info;
+    const TetrominoInfo *tetromino_to_hold = game->active_tetro.info;
     
     if(game->held_tetro){ //if there's currently a tetromino already in the hold
     // swap it
@@ -518,82 +515,48 @@ void hold_tetromino(GameInstance* game){
 }
 
 int move_tetromino(GameInstance* game){
-
-    // https://cadcdev.sourceforge.net/docs/kos-2.0.0/group__controller__buttons.html
-    // http://gamedev.allusion.net/docs/kos-2.0.0/structcont__state__t.html
-
-    maple_device_t *cont;
-    cont_state_t *state;
-
-    cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
-
-    if(cont) {
-        state=(cont_state_t *)maple_dev_status(cont);
-
-        if(!state){
-            return 0;
-        }
-
-        // the triggers on the sega dreamcast are analog triggers that range from 0-255
-        // I have the hold function trigger if it's at least half-pressed (128)
-        if(state->ltrig >= 128 && game->hold_eligible){
-            hold_tetromino(game);
-            game->hold_eligible=0;
-        }
-
-        if(game->move_timebuffer==0){
-            if((state->buttons & CONT_DPAD_UP) && game->released_up_button){
-                hard_drop(game);
-                game->move_timebuffer=10;
-                game->released_up_button = 0;
-            }
-            if(state->buttons & CONT_DPAD_DOWN){
-                // softdrop
-                tetro_fall(game, 1);
-                game->move_timebuffer=10;
-            }
-            if(state->buttons & CONT_DPAD_LEFT){
-                tetro_left(game);
-                game->move_timebuffer=10;
-            }
-            if(state->buttons & CONT_DPAD_RIGHT){
-                tetro_right(game);
-                game->move_timebuffer=10;
-            }
-            
-
-            if( (state->buttons & CONT_Y) && game->released_y_button){
-                rotate_tetro_clockwise(game);
-                game->released_y_button=0;
-            }
-            if( (state->buttons & CONT_X) && game->released_x_button){
-                rotate_tetro_counterclockwise(game);
-                game->released_x_button=0;
-            }
-
-            if( !(state->buttons & CONT_X) && !game->released_x_button){
-                game->released_x_button=1;
-            }
-            if( !(state->buttons & CONT_Y) && !game->released_y_button){
-                game->released_y_button=1;
-            }
-            if ( !(state->buttons & CONT_DPAD_UP) && !game->released_up_button){
-                game->released_up_button = 1;
-            }
-
-            
-        }
-        if(game->move_timebuffer>0){
-            game->move_timebuffer-=1;
-        }
-
+    // the triggers on the sega dreamcast are analog triggers that range from 0-255
+    // I have the hold function trigger if it's at least half-pressed (128)
+    if(game->input.trigger_left >= 128 && game->hold_eligible){
+        hold_tetromino(game);
+        game->hold_eligible=0;
     }
+
+    if(game->move_timebuffer<=0){
+        if(game->input.dpad_up.just_pressed){
+            hard_drop(game);
+            game->move_timebuffer=10;
+        }
+        if(game->input.dpad_down.pressed){
+            // softdrop
+            tetro_fall(game, 1);
+            game->move_timebuffer=10;
+        }
+        if(game->input.dpad_left.pressed){
+            tetro_left(game);
+            game->move_timebuffer=10;
+        }
+        if(game->input.dpad_right.pressed){
+            tetro_right(game);
+            game->move_timebuffer=10;
+        }
+        
+        if(game->input.button_y.just_pressed){
+            rotate_tetro_clockwise(game);
+        }
+        if(game->input.button_x.just_pressed){
+            rotate_tetro_counterclockwise(game);
+        }
+            
+    }
+    else {
+            game->move_timebuffer-=1;
+    }
+
     return 0;
 }
 
 void generate_new_tetro(GameInstance* game){
-    // TetrominoType random_id = (rand() % 7)+1;
-    // dbg_print_bag(game);
     TetrominoType random_id = game->bag[game->bag_index];
 
     game->bag_index++;
@@ -601,7 +564,6 @@ void generate_new_tetro(GameInstance* game){
         game->bag_index=0;
         shuffle_bag(game);
     }
-
 
     init_new_tetro(game, random_id);
     replot_active_tetro(game);
@@ -683,7 +645,6 @@ void check_lines(GameInstance* game){
             clear_line(game, row);
             game->line_clears++;
             new_line_clears++;
-            // printf("Total line clears: %d\n",game->line_clears);
         }
         found_empty_tile=0;
     }
@@ -697,7 +658,6 @@ void check_lines(GameInstance* game){
         game->score += game->level * 500;
     }
     else if(new_line_clears==4){
-        // printf("Tetris!");
         game->score += game->level * 800;
     }
 
@@ -735,7 +695,7 @@ void draw_hold(GameInstance* game){
     float block_x;
     float block_y;
 
-    TetrominoInfo *held_tetro_info = game->held_tetro;
+    const TetrominoInfo *held_tetro_info = game->held_tetro;
     int size = held_tetro_info->size;
 
     for(int row=0; row<size; row++){
@@ -782,54 +742,42 @@ void draw_hud(GameInstance* game){
     draw_hold(game);
 }
 
-void check_reset_button(GameInstance* game){
-    maple_device_t *controller = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
-    cont_state_t *controllerState = (cont_state_t*) maple_dev_status(controller);
-
-    if (controllerState->buttons & CONT_START){
-        init_game_instance(game);
-    }
-
-}
-
-void check_pause_button(){
-    maple_device_t *controller = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
-    cont_state_t *controllerState = (cont_state_t*) maple_dev_status(controller);
-
-    if (!(controllerState->buttons & CONT_START)){
-        pause_button_released=1;
-    }
-    else if (pause_button_released==1){
-        if(paused){
-            paused=0;
-            pause_button_released=0;
-        } else {
-            paused=1;
-            pause_button_released=0;
-        }
+void update_pause(GameInstance* game) {
+    if (game->input.button_start.just_pressed) {
+        paused = !paused;
     }
 }
 
 void draw_frame_gameplay(GameInstance* game){
 
-    check_pause_button();
-
-    if (!game->loss && !paused){
-        move_tetromino(game);
-
-        game->fall_timer -= 1;
-
-        if(game->active_tetro.set==1 || game->first_run==1){
-            check_lines(game);
-            generate_new_tetro(game);
-            game->hold_eligible=1;
-            game->fall_timer=game->falltime;
-            game->first_run=0;
+    // pressing start after game is lost = restart game
+    if(game->loss) {
+        if(game->input.button_start.just_pressed){
+            paused=0;
+            init_game_instance(game);
         }
+    }
 
-        if(game->fall_timer<=0){
-            game->fall_timer=game->falltime;
-            tetro_fall(game, 0);
+    else {
+        update_pause(game);
+        
+        if(!paused){
+            move_tetromino(game);
+
+            game->fall_timer -= 1;
+
+            if(game->active_tetro.set==1 || game->first_run==1){
+                check_lines(game);
+                generate_new_tetro(game);
+                game->hold_eligible=1;
+                game->fall_timer=game->falltime;
+                game->first_run=0;
+            }
+
+            if(game->fall_timer<=0){
+                game->fall_timer=game->falltime;
+                tetro_fall(game, 0);
+            }
         }
     }
 
@@ -851,7 +799,6 @@ void draw_frame_gameplay(GameInstance* game){
     if(game->loss){
         draw_text(50,200,"You lost!");
         draw_text(50,250,"Press START to reset");
-        check_reset_button(game);
     }
 
     if (paused){
@@ -878,6 +825,9 @@ int main(){
     init_game_instance(&game);
 
     while(!exitProgram){
+        update_inputs(&game.input, 0);
+        // dbg_print_controller(&game.input);
+        // update_logic(&game);
         draw_frame_gameplay(&game);
     }
 
