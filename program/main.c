@@ -514,7 +514,7 @@ void hold_tetromino(GameInstance* game){
     game->hold_eligible=0;
 }
 
-int move_tetromino(GameInstance* game){
+int process_tetro_movement(GameInstance* game){
     // the triggers on the sega dreamcast are analog triggers that range from 0-255
     // I have the hold function trigger if it's at least half-pressed (128)
     if(game->input.trigger_left >= 128 && game->hold_eligible){
@@ -665,7 +665,7 @@ void check_lines(GameInstance* game){
         int new_level = ((game->line_clears-(game->line_clears%10))/10)+1;
         if(new_level>game->level){
             game->level=new_level;
-            game->falltime= 93 - (new_level*6);
+            // game->falltime= 93 - (new_level*6);
         }
     }
     // FALL TIME CALCULATION:
@@ -748,6 +748,18 @@ void update_pause(GameInstance* game) {
     }
 }
 
+void process_tetro_fall(GameInstance *game) {
+    float gravity = gravity_by_level[game->level];
+    game->fall_timer += gravity;
+    int blocks_to_fall = 0;
+
+    if (game->fall_timer > 1) {
+        blocks_to_fall = (int)game->fall_timer;
+        game->fall_timer -= blocks_to_fall;
+    }
+    //todo: make tetromino fall
+}
+
 void draw_frame_gameplay(GameInstance* game){
 
     // pressing start after game is lost = restart game
@@ -762,7 +774,7 @@ void draw_frame_gameplay(GameInstance* game){
         update_pause(game);
         
         if(!paused){
-            move_tetromino(game);
+            process_tetro_movement(game);
 
             game->fall_timer -= 1;
 
@@ -774,10 +786,11 @@ void draw_frame_gameplay(GameInstance* game){
                 game->first_run=0;
             }
 
-            if(game->fall_timer<=0){
-                game->fall_timer=game->falltime;
-                tetro_fall(game, 0);
-            }
+            process_tetro_fall(game);
+            // if(game->fall_timer<=0){
+            //     game->fall_timer=game->falltime;
+            //     tetro_fall(game, 0);
+            // }
         }
     }
 

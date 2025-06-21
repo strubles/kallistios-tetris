@@ -68,6 +68,8 @@ typedef struct {
     // Then, the dummy array can be rotated, without effecting how the next
     // tetromino of the same type will spawn in.
     int dummy[4][4]; // holder (rotated shapes are stored here)
+
+    float fall_counter;
 } Tetrodata;
 
 typedef struct {
@@ -137,6 +139,8 @@ typedef struct {
     int bag_index;
 
     InputState input;
+
+    float gravity;
 
 } GameInstance;
 
