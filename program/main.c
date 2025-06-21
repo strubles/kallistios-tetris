@@ -58,7 +58,7 @@ void init_game_instance(GameInstance* game){
     game->level = 1;
     // game->falltime = 93;
     // game->fall_timer = 93;
-    game->fall_timer = 0;
+    game->fall_timer = 0.0f;
     game->loss = 0;
     game->first_run = 1;
     game->active_tetro.set = 0;
@@ -773,7 +773,7 @@ int find_highest_filled_cell_in_col(BlockColor *column, int height){
 //         col_buffer[row] = matrix[row][col_index];
 //     }
 // }
-void get_column(const BlockColor *matrix, BlockColor *col_buffer, int col_index, int col_height, int row_width) {
+void get_column(BlockColor *matrix, BlockColor *col_buffer, int col_index, int col_height, int row_width) {
     for (int row_index = 0; row_index < col_height; row_index++) {
         col_buffer[row_index] = matrix[row_index*row_width + col_index];
     }
@@ -799,7 +799,7 @@ int determine_hard_drop_distance(GameInstance *game) {
 
     for (int tetro_col_index=0; tetro_col_index<size; tetro_col_index++){
         BlockColor tetro_col[size];
-        get_column(game->active_tetro.dummy, tetro_col, tetro_col_index, size, size);
+        get_column(&game->active_tetro.dummy[0][0], tetro_col, tetro_col_index, size, size);
         int lowest_tetro_cell = find_lowest_filled_cell_in_col(tetro_col, size);
 
         // 'i' is referring to the dummy's indexes which are relative to the tetromino
@@ -807,9 +807,9 @@ int determine_hard_drop_distance(GameInstance *game) {
         // tetromino's current positioning, in order to compare the right columns
         int field_x = tetro_col_index + game->active_tetro.left_x;
 
-        const BlockColor (*trimmed_field)[12] = &field_backup[3]; // field, but ignoring the top 3 rows
+        const BlockColor (*trimmed_field)[12] = &game->field[3]; // field, but ignoring the top 3 rows
         BlockColor field_col[21]; // height of full field (24) minus the 3 we chopped off
-        get_column(trimmed_field, field_col, field_x, 21, 12);
+        get_column(&trimmed_field[0][0], field_col, field_x, 21, 12);
         int highest_field_cell = find_highest_filled_cell_in_col(field_col, 21);
 
         if (highest_field_cell==-1){
@@ -818,26 +818,42 @@ int determine_hard_drop_distance(GameInstance *game) {
             highest_field_cell = 21;
         }
 
-        distances[tetro_col_index] = highest_field_cell - (lowest_tetro_cell+game->active_tetro.top_y);
+        distances[tetro_col_index] = highest_field_cell+3 - (lowest_tetro_cell+(game->active_tetro.top_y));
     }
     return array_min(distances, size);
 }
+
+int time_until_lock = 15;
 
 void process_tetro_fall(GameInstance *game) {
     float gravity = gravity_by_level[game->level];
     game->fall_timer += gravity;
     int blocks_to_fall = 0;
+    // dbglog(DBG_INFO, "gravity: %f\nfall timer: %f\n", gravity, game->fall_timer);
 
-    if (game->fall_timer > 1) {
+
+    if (game->fall_timer > 1.0f) {
         blocks_to_fall = (int)game->fall_timer;
-        game->fall_timer -= blocks_to_fall;
+        game->fall_timer -= (float)blocks_to_fall;
 
         int hard_drop_distance = determine_hard_drop_distance(game);
         dbglog(DBG_INFO, "Current hard drop distance: %d\n", hard_drop_distance);
         if (blocks_to_fall >= hard_drop_distance) {
             blocks_to_fall = hard_drop_distance;
         }
-        move_tetro_like_this(&game->active_tetro, 0, blocks_to_fall);
+        if (blocks_to_fall == 0) {
+            if (time_until_lock > 0) {
+                time_until_lock--;
+            }
+            else (
+                commit_tetro(game);
+                time_until_lock = 15;
+            )
+        }
+        else {
+            move_tetro_like_this(&game->active_tetro, 0, blocks_to_fall);
+        }
+        replot_active_tetro(game);
     }
 }
 

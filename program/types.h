@@ -119,8 +119,8 @@ typedef struct {
     long int score;
     int level;
     int line_clears;
-    int fall_timer;
-    int falltime; // what we reset the timer to after every tetro fall
+    float fall_timer;
+    // int falltime; // what we reset the timer to after every tetro fall
 
     // This holds data on the current active tetromino. It is continuously overwritten with the next
     // tetromino as the old tetromino get committed to the field matrix and doesn't need to be kept
