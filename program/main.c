@@ -56,8 +56,9 @@ void init_game_instance(GameInstance* game){
     game->line_clears = 0;
     game->score = 0;
     game->level = 1;
-    game->falltime = 93;
-    game->fall_timer = 93;
+    // game->falltime = 93;
+    // game->fall_timer = 93;
+    game->fall_timer = 0;
     game->loss = 0;
     game->first_run = 1;
     game->active_tetro.set = 0;
@@ -307,6 +308,7 @@ void tetro_right(GameInstance* game){
 }
 
 void tetro_fall(GameInstance* game, int award_score){
+    // one block at a time
     game->active_tetro.top_y += 1;
     replot_active_tetro(game);
     if(!check_valid_state(game)){
@@ -748,6 +750,79 @@ void update_pause(GameInstance* game) {
     }
 }
 
+int find_lowest_filled_cell_in_col(BlockColor *column, int height){
+    for (int i=height-1; i>=0; i--){
+        if (column[i]>0) {
+            return i;
+        }
+    }
+    return -1; // none found
+}
+
+int find_highest_filled_cell_in_col(BlockColor *column, int height){
+    for (int i=0; i<height; i++){
+        if (column[i]>0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// void get_column(BlockColor *matrix, BlockColor *col_buffer, int col_index, int height) {
+//     for (int row=0; row<height; row++) {
+//         col_buffer[row] = matrix[row][col_index];
+//     }
+// }
+void get_column(const BlockColor *matrix, BlockColor *col_buffer, int col_index, int col_height, int row_width) {
+    for (int row_index = 0; row_index < col_height; row_index++) {
+        col_buffer[row_index] = matrix[row_index*row_width + col_index];
+    }
+}
+
+int array_min(int *arr, int size) {
+    if (size <= 0) return -1;
+
+    int min = arr[0];
+    for (int i = 1; i < size; i++) {
+        if (arr[i] < min) {
+            min = arr[i];
+        }
+    }
+    return min;
+}
+
+int determine_hard_drop_distance(GameInstance *game) {
+    // TODO: maybe this should be stored in the active_tetro at the start of the frame ??
+    int size = game->active_tetro.info->size;
+
+    int distances[size];
+
+    for (int tetro_col_index=0; tetro_col_index<size; tetro_col_index++){
+        BlockColor tetro_col[size];
+        get_column(game->active_tetro.dummy, tetro_col, tetro_col_index, size, size);
+        int lowest_tetro_cell = find_lowest_filled_cell_in_col(tetro_col, size);
+
+        // 'i' is referring to the dummy's indexes which are relative to the tetromino
+        // itself; we need to find where this really exists on the field given the
+        // tetromino's current positioning, in order to compare the right columns
+        int field_x = tetro_col_index + game->active_tetro.left_x;
+
+        const BlockColor (*trimmed_field)[12] = &field_backup[3]; // field, but ignoring the top 3 rows
+        BlockColor field_col[21]; // height of full field (24) minus the 3 we chopped off
+        get_column(trimmed_field, field_col, field_x, 21, 12);
+        int highest_field_cell = find_highest_filled_cell_in_col(field_col, 21);
+
+        if (highest_field_cell==-1){
+            // this should never happen as the bottom row should always be filled and it 
+            // is included in the call, but this is a failsafe
+            highest_field_cell = 21;
+        }
+
+        distances[tetro_col_index] = highest_field_cell - (lowest_tetro_cell+game->active_tetro.top_y);
+    }
+    return array_min(distances, size);
+}
+
 void process_tetro_fall(GameInstance *game) {
     float gravity = gravity_by_level[game->level];
     game->fall_timer += gravity;
@@ -756,8 +831,14 @@ void process_tetro_fall(GameInstance *game) {
     if (game->fall_timer > 1) {
         blocks_to_fall = (int)game->fall_timer;
         game->fall_timer -= blocks_to_fall;
+
+        int hard_drop_distance = determine_hard_drop_distance(game);
+        dbglog(DBG_INFO, "Current hard drop distance: %d\n", hard_drop_distance);
+        if (blocks_to_fall >= hard_drop_distance) {
+            blocks_to_fall = hard_drop_distance;
+        }
+        move_tetro_like_this(&game->active_tetro, 0, blocks_to_fall);
     }
-    //todo: make tetromino fall
 }
 
 void draw_frame_gameplay(GameInstance* game){
@@ -776,13 +857,13 @@ void draw_frame_gameplay(GameInstance* game){
         if(!paused){
             process_tetro_movement(game);
 
-            game->fall_timer -= 1;
+            // game->fall_timer -= 1;
 
             if(game->active_tetro.set==1 || game->first_run==1){
                 check_lines(game);
                 generate_new_tetro(game);
                 game->hold_eligible=1;
-                game->fall_timer=game->falltime;
+                // game->fall_timer=game->falltime;
                 game->first_run=0;
             }
 

@@ -37,4 +37,6 @@ extern const ColorRgba RGBA_BLACK;
 // Default field layout
 extern const BlockColor field_backup[24][12];
 
+const float gravity_by_level[21];
+
 #endif // CONSTANTS_H
