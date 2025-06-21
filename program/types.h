@@ -23,7 +23,8 @@ typedef enum {
     COLOR_GREEN,
     COLOR_RED,
     COLOR_BLUE,
-    COLOR_ORANGE
+    COLOR_ORANGE,
+    COLOR_WHITE
 } BlockColor;
 
 typedef struct {
@@ -73,6 +74,12 @@ typedef struct {
 } Tetrodata;
 
 typedef struct {
+    int (*dummy)[4]; // should point to same dummy as the active tetromino so we dont have to copy it
+    int left_x;
+    int top_y;
+} GhostTetro;
+
+typedef struct {
     int current;
     int previous;
 
@@ -109,7 +116,7 @@ typedef struct {
     // It is rendered to the screen directly on top of the main field matrix. When a tetromino is set,
     // it is copied over to the main field matrix in the same location, and the temp_field matrix is
     // cleared out for the next tetromino.
-    BlockColor temp_field[24][12];
+    // BlockColor temp_field[24][12];
 
     BlockColor hold_field[4][4];
 
@@ -126,6 +133,8 @@ typedef struct {
     // tetromino as the old tetromino get committed to the field matrix and doesn't need to be kept
     // track of anymore.
     Tetrodata active_tetro;
+    GhostTetro ghost_tetro;
+    int hard_drop_distance;
 
     int first_run;
     int loss;

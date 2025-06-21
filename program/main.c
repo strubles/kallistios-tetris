@@ -47,7 +47,7 @@ KOS_INIT_ROMDISK(romdisk);
 
 void init_game_instance(GameInstance* game){
     paused = 0;
-    memset(game->temp_field, COLOR_NONE, sizeof(game->temp_field));
+    // memset(game->temp_field, COLOR_NONE, sizeof(game->temp_field));
     memset(game->hold_field, COLOR_NONE, sizeof(game->hold_field));
     memcpy(game->field, field_backup, 288*sizeof(int));
     game->held_tetro = 0;
@@ -228,6 +228,8 @@ void init_new_tetro(GameInstance* game, TetrominoType type){
     game->active_tetro.info = info;
     game->active_tetro.orientation = DEFAULT;
     game->active_tetro.set = 0;
+    // game->active_tetro.dummy = {0};
+    game->ghost_tetro.dummy = game->active_tetro.dummy;
 
     // reset the holder to its initial state
     memset(game->active_tetro.dummy, 0, sizeof(game->active_tetro.dummy));
@@ -236,100 +238,236 @@ void init_new_tetro(GameInstance* game, TetrominoType type){
             game->active_tetro.dummy[i][j] = info->shape[i][j];
         }
     }
+
+    game->hard_drop_distance = find_hard_drop_distance(game);//, &game->active_tetro);
+    update_ghost_piece(game);
 }
 
-void replot_active_tetro(GameInstance* game){
-    // Adds active_tetro to the temp_field matrix, in the position and
-    // orientation specified by the data members in active_tetro
-    // You have to do this before you check the validity of the fields.
+// void replot_tetro(GameInstance* game, Tetrodata *tetro){
+//     // Adds active_tetro to the temp_field matrix, in the position and
+//     // orientation specified by the data members in active_tetro
+//     // You have to do this before you check the validity of the fields.
 
-    memset(game->temp_field, COLOR_NONE, sizeof(game->temp_field));
+//     memset(game->temp_field, COLOR_NONE, sizeof(game->temp_field));
 
-    const TetrominoInfo *info = game->active_tetro.info;
+//     // const TetrominoInfo *info = game->active_tetro.info;
+//     const TetrominoInfo *info = tetro->info;
 
-    for (int row=0; row<info->size; row++){
-        for (int cell=0; cell<info->size; cell++){
-            if (game->active_tetro.top_y+row < 24 && game->active_tetro.left_x+cell < 12) { //don't go off the grid          
-                if (game->active_tetro.dummy[row][cell] > 0) {
-                    game->temp_field[game->active_tetro.top_y + row][game->active_tetro.left_x + cell] = info->color;
-                }      
-            }
-        }
-    }
-}
+//     for (int row=0; row<info->size; row++){
+//         for (int cell=0; cell<info->size; cell++){
+//             if (game->active_tetro.top_y+row < 24 && game->active_tetro.left_x+cell < 12) { //don't go off the grid          
+//                 if (game->active_tetro.dummy[row][cell] > 0) {
+//                     game->temp_field[game->active_tetro.top_y + row][game->active_tetro.left_x + cell] = info->color;
+//                 }      
+//             }
+//         }
+//     }
+// }
 
-void commit_tetro(GameInstance* game){
+void commit_active_tetro(GameInstance* game){
     // The active tetromino gets copied from the active tetromino array to the main field
     // data structure to "set" it.
     // THIS DOES NOT DO CHECKS to validate position! Check it first with check_valid_state()
 
-    for(int row=0; row<24; row=row+1){
-        for(int cell=0; cell<12; cell=cell+1){
-            if(game->temp_field[row][cell]>0){
-                game->field[row][cell]=game->temp_field[row][cell];
+    // for(int row=0; row<24; row=row+1){
+    //     for(int cell=0; cell<12; cell=cell+1){
+    //         if(game->temp_field[row][cell]>0){
+    //             game->field[row][cell]=game->temp_field[row][cell];
+    //         }
+    //     }
+    // }
+    dbglog(DBG_INFO, "commiting tetromino with left x %d, top y %d\n",game->active_tetro.left_x,game->active_tetro.top_y);
+
+    int size = game->active_tetro.info->size;
+    for (int relative_y = 0; relative_y < size; relative_y++) {
+        for (int relative_x = 0; relative_x < size; relative_x++) {
+            if (game->active_tetro.dummy[relative_y][relative_x] != COLOR_NONE) {
+
+                // convert relative tetro array coordinates to absolute field coordinates
+                int field_x = game->active_tetro.left_x + relative_x;
+                int field_y = game->active_tetro.top_y + relative_y;
+
+                game->field[field_y][field_x] = game->active_tetro.info->color;
             }
         }
     }
-
 }
 
-int check_valid_state(GameInstance* game){
-    // Checks for overlapping tiles/blocks between the temp_field (the active tetromino) and
-    // the field (all other tetrominos and the edges of the screen).
-    // Returns 0 (false) if an overlap is found (state is invalid).
-    // Returns 1 (true) if an overlap is NOT found (state is valid)
+// int check_valid_state(GameInstance* game){
+//     // Checks for overlapping tiles/blocks between the temp_field (the active tetromino) and
+//     // the field (all other tetrominos and the edges of the screen).
+//     // Returns 0 (false) if an overlap is found (state is invalid).
+//     // Returns 1 (true) if an overlap is NOT found (state is valid)
 
-    for(int row=0; row<24; row++){
-        for(int cell=0; cell<12; cell++){
-            if(game->field[row][cell]!=0 && game->temp_field[row][cell]!=0){
-                return 0;
+//     //dbglog(DBG_INFO, "in check_valid_state()");
+
+//     int size =  game->active_tetro.info->size;
+    
+//     for (int relative_y = 0; relative_y < size; relative_y++) {
+//         for (int relative_x = 0; relative_x < size; relative_x++) {
+//             if (game->active_tetro.dummy[relative_y][relative_x] != COLOR_NONE) {
+
+//                 // convert relative tetro array coordinates to absolute field coordinates
+//                 int field_x = game->active_tetro.left_x + relative_x;
+//                 int field_y = game->active_tetro.top_y + relative_y;
+
+//                 // Check bounds
+//                 if (field_x < 0 || field_x >= FIELD_WIDTH ||
+//                     field_y < 0 || field_y >= FIELD_HEIGHT) {
+//                     return 0;
+//                 }
+
+//                 // Check for collision with existing blocks
+//                 if (game->field[field_y][field_x] != COLOR_NONE) {
+//                     return 0;
+//                 }
+//             }
+//         }
+//     }
+
+//     // for(int row=0; row<24; row++){
+//     //     for(int cell=0; cell<12; cell++){
+//     //         if(game->field[row][cell]!=0 && game->temp_field[row][cell]!=0){
+//     //             return 0;
+//     //         }
+//     //     }
+//     // }
+//     return 1;
+// }
+int check_valid_state(GameInstance* game){
+    //dbglog(DBG_INFO, "in check_valid_state()\n");
+
+    int size = game->active_tetro.info->size;
+    //dbglog(DBG_INFO, "Tetromino size: %d\n", size);
+    //dbglog(DBG_INFO, "Active tetro position: (%d, %d)\n", game->active_tetro.left_x, game->active_tetro.top_y);
+
+    for (int relative_y = 0; relative_y < size; relative_y++) {
+        for (int relative_x = 0; relative_x < size; relative_x++) {
+            int block = game->active_tetro.dummy[relative_y][relative_x];
+            //dbglog(DBG_INFO, "Checking dummy[%d][%d] = %d\n", relative_y, relative_x, block);
+
+            if (block != COLOR_NONE) {
+                int field_x = game->active_tetro.left_x + relative_x;
+                int field_y = game->active_tetro.top_y + relative_y;
+                //dbglog(DBG_INFO, "--> Block present. Field coords: (%d, %d)\n", field_x, field_y);
+
+                // Check out-of-bounds
+                if (field_x < 0 || field_x >= FIELD_WIDTH || field_y < 0 || field_y >= FIELD_HEIGHT) {
+                    //dbglog(DBG_ERROR, "!! Out of bounds at (%d, %d). Returning INVALID.\n", field_x, field_y);
+                    return 0;
+                }
+
+                int field_block = game->field[field_y][field_x];
+                //dbglog(DBG_INFO, "--> Field[%d][%d] = %d\n", field_y, field_x, field_block);
+
+                if (field_block != COLOR_NONE) {
+                    //dbglog(DBG_ERROR, "!! Collision detected at (%d, %d). Returning INVALID.\n", field_y, field_x);
+                    return 0;
+                }
             }
         }
     }
+
+    //dbglog(DBG_INFO, "No collisions or bounds issues. Returning VALID.\n");
     return 1;
 }
 
+
 void tetro_left(GameInstance* game){
     game->active_tetro.left_x -= 1;
-    replot_active_tetro(game);
+    // replot_active_tetro(game);
     if(!check_valid_state(game)){
         game->active_tetro.left_x += 1; //undo it
-        replot_active_tetro(game);
+        // replot_active_tetro(game);
+    } else {
+        game->hard_drop_distance = find_hard_drop_distance(game);//, game->active_tetro);
+        update_ghost_piece(game);
     }
 }
 
 void tetro_right(GameInstance* game){
     game->active_tetro.left_x += 1;
-    replot_active_tetro(game);
+    // replot_active_tetro(game);
     if(!check_valid_state(game)){
         game->active_tetro.left_x -= 1; //undo it
-        replot_active_tetro(game);
+        // replot_active_tetro(game);
+    } else {
+        game->hard_drop_distance = find_hard_drop_distance(game);//, game->active_tetro);
+        update_ghost_piece(game);
     }
 }
 
-void tetro_fall(GameInstance* game, int award_score){
+void update_ghost_piece(GameInstance* game){
+    game->ghost_tetro.top_y = game->active_tetro.top_y + game->hard_drop_distance;
+    game->ghost_tetro.left_x = game->active_tetro.left_x;
+    dbglog(DBG_INFO, "ghost tetro top y: %d, hard drop distance: %d\n", game->ghost_tetro.top_y, game->hard_drop_distance);
+}
+
+void tetro_fall(GameInstance* game, int award_score, int commit){
     // one block at a time
+    dbglog(DBG_INFO, "tetro_fall: old tetro top y: %d\n", game->active_tetro.top_y);
     game->active_tetro.top_y += 1;
-    replot_active_tetro(game);
+    dbglog(DBG_INFO, "tetro_fall: new tetro top y: %d\n", game->active_tetro.top_y);
+
+    // replot_active_tetro(game);
     if(!check_valid_state(game)){
+        dbglog(DBG_INFO, "%d is invalid\n", game->active_tetro.top_y);
         game->active_tetro.top_y -= 1; //undo it
-        replot_active_tetro(game);
-        commit_tetro(game);
-        game->active_tetro.set=1;
+        // replot_active_tetro(game);
+        if (commit) {
+            commit_active_tetro(game);
+            game->active_tetro.set=1;
+        }
     }
     if(award_score){
         game->score+=1;
     }
 }
 
-void hard_drop(GameInstance* game){
-    // Falls straight down until the tetromino gets set
-    int blocks_fallen=0;
-    while(!game->active_tetro.set){
-        tetro_fall(game, 0);
-        blocks_fallen++;
+void hard_drop(GameInstance* game) {
+    game->active_tetro.top_y += game->hard_drop_distance;
+    commit_active_tetro(game);
+    game->active_tetro.set=1;
+}
+
+// int find_hard_drop_distance(GameInstance* game){
+//     // Falls straight down until the tetromino gets set
+//     int orig_y = game->active_tetro.top_y;
+
+//     int valid = 1;
+//     int blocks_fallen=0;
+//     // while(!game->active_tetro.set){
+//     while(valid){
+//         tetro_fall(game, 0, 0); // 0, 0 = don't aware score, don't commit when invalid pos is found
+//         valid = check_valid_state(game);
+//         if (valid) {
+//             blocks_fallen++;
+//         }
+//     }
+//     // game->score += blocks_fallen * 2;
+//     // reset
+//     game->active_tetro.top_y = orig_y;
+//     return blocks_fallen;
+//     // replot_active_tetro()
+// }
+int find_hard_drop_distance(GameInstance* game){
+    int orig_y = game->active_tetro.top_y;
+
+    int blocks_fallen = 0;
+
+    while (1) {
+        game->active_tetro.top_y += 1;
+        if (!check_valid_state(game)) {
+            game->active_tetro.top_y -= 1; // undo
+            break;
+        }
+        else {
+            blocks_fallen++;
+        }
     }
-    game->score += blocks_fallen * 2;
+
+    game->active_tetro.top_y = orig_y;
+    return blocks_fallen;
 }
 
 // https://stackoverflow.com/questions/27288694/transpose-of-a-matrix-2d-array
@@ -401,11 +539,13 @@ void rotate_tetro_clockwise(GameInstance* game){
     for (int i=0; i < game->active_tetro.info->size; i++) {
         reverse_active_tetro_row(game, i);
     }
-    replot_active_tetro(game);
+    // replot_active_tetro(game);
 
     if (check_valid_state(game)) {
         update_orientation_cw(&game->active_tetro);
-        // dbglog(DBG_INFO, "%c tetromino rotated cw with no kicks\n", game->active_tetro.info->symbol);
+        // //dbglog(DBG_INFO, "%c tetromino rotated cw with no kicks\n", game->active_tetro.info->symbol);
+        game->hard_drop_distance = find_hard_drop_distance(game);//, &game->active_tetro);
+        update_ghost_piece(game);
         return;
     }
 
@@ -423,11 +563,13 @@ void rotate_tetro_clockwise(GameInstance* game){
             info->kicks_cw[rotation_type_index][test_index][1]
         );
 
-        replot_active_tetro(game);
+        // replot_active_tetro(game);
 
         if (check_valid_state(game)) {
             update_orientation_cw(&game->active_tetro);
-            // dbglog(DBG_INFO, "%c tetromino rotated on test %d (%d, %d)\n", game->active_tetro.info->symbol, test_index+2, info->kicks_cw[rotation_type_index][test_index][0], info->kicks_cw[rotation_type_index][test_index][1]);
+            game->hard_drop_distance = find_hard_drop_distance(game);//, &game->active_tetro);
+            update_ghost_piece(game);
+            // //dbglog(DBG_INFO, "%c tetromino rotated on test %d (%d, %d)\n", game->active_tetro.info->symbol, test_index+2, info->kicks_cw[rotation_type_index][test_index][0], info->kicks_cw[rotation_type_index][test_index][1]);
             return;
         }
     }
@@ -444,7 +586,7 @@ void rotate_tetro_clockwise(GameInstance* game){
     }
     transpose_active_tetro(game);
 
-    replot_active_tetro(game);
+    // replot_active_tetro(game);
 }
 
 void rotate_tetro_counterclockwise(GameInstance* game){
@@ -459,10 +601,12 @@ void rotate_tetro_counterclockwise(GameInstance* game){
     // 2. transpose
     transpose_active_tetro(game);
 
-    replot_active_tetro(game);
+    // replot_active_tetro(game);
 
     if (check_valid_state(game)) {
         update_orientation_ccw(&game->active_tetro);
+        game->hard_drop_distance = find_hard_drop_distance(game);//. &game->active_tetro);
+        update_ghost_piece(game);
         return;
     }
 
@@ -477,10 +621,12 @@ void rotate_tetro_counterclockwise(GameInstance* game){
             info->kicks_ccw[rotation_type_index][test_index][1]
         );
 
-        replot_active_tetro(game);
+        // replot_active_tetro(game);
 
         if (check_valid_state(game)) {
             update_orientation_ccw(&game->active_tetro);
+            game->hard_drop_distance = find_hard_drop_distance(game);//, &game->active_tetro);
+            update_ghost_piece(game);
             return;
         }
     }
@@ -494,7 +640,7 @@ void rotate_tetro_counterclockwise(GameInstance* game){
         reverse_active_tetro_row(game, i);
     }
 
-    replot_active_tetro(game);
+    // replot_active_tetro(game);
 }
 
 void hold_tetromino(GameInstance* game){
@@ -504,7 +650,7 @@ void hold_tetromino(GameInstance* game){
     if(game->held_tetro){ //if there's currently a tetromino already in the hold
     // swap it
         init_new_tetro(game, game->held_tetro->type);
-        replot_active_tetro(game);
+        // replot_active_tetro(game);
 
         game->held_tetro = tetromino_to_hold;
     }
@@ -524,14 +670,18 @@ int process_tetro_movement(GameInstance* game){
         game->hold_eligible=0;
     }
 
+    if(game->input.dpad_up.just_pressed){
+        // dbg_print_field(game);
+        hard_drop(game);
+        game->move_timebuffer=10;
+        return 0;
+    }
+
     if(game->move_timebuffer<=0){
-        if(game->input.dpad_up.just_pressed){
-            hard_drop(game);
-            game->move_timebuffer=10;
-        }
+        // dbg_print_field(game);
         if(game->input.dpad_down.pressed){
             // softdrop
-            tetro_fall(game, 1);
+            tetro_fall(game, 1, 1);
             game->move_timebuffer=10;
         }
         if(game->input.dpad_left.pressed){
@@ -567,52 +717,120 @@ void generate_new_tetro(GameInstance* game){
         shuffle_bag(game);
     }
 
+    //dbglog(DBG_INFO, "in genrate_new_tetro: calling init_new_tetro()\n");
+
     init_new_tetro(game, random_id);
-    replot_active_tetro(game);
+    //dbglog(DBG_INFO, "init_new_tetro() done");
+    // replot_active_tetro(game);
 
     if(!check_valid_state(game)){
         game->loss = 1;
     }
+    //dbglog(DBG_INFO, "done with check_valid_state()");
 }
 
-void draw_field(GameInstance* game){
-    // One block is 20 pixels x 20 pixels
-    // field is 20 blocks * 20 pixels tall = 400 pixels
-    // and 10 blocks * 20 pixels wide = 200 pixels
+// void draw_field(GameInstance* game){
+//     // One block is 20 pixels x 20 pixels
+//     // field is 20 blocks * 20 pixels tall = 400 pixels
+//     // and 10 blocks * 20 pixels wide = 200 pixels
 
-    //draw edges
+//     //draw edges
+//     draw_horiz_line(field_left, field_right, field_top, RGBA_WHITE);
+//     draw_horiz_line(field_left, field_right, field_bottom, RGBA_WHITE);
+//     draw_vert_line(field_left, field_top, field_bottom, RGBA_WHITE);
+//     draw_vert_line(field_right, field_top, field_bottom, RGBA_WHITE);
+
+//     //draw each row
+//     for(int i=20; i<FIELD_HEIGHT; i=i+20){
+//         draw_horiz_line(field_left, field_right, field_top+i, RGBA_BLACK);
+//     }
+
+//     //draw each column
+//     for(int j=20; j<FIELD_WIDTH; j=j+20){
+//         draw_vert_line(field_left+j, field_top, field_bottom, RGBA_BLACK);
+//     }
+
+//     float block_x;
+//     float block_y;
+//     //now draw the blocks
+//     for(int row=3; row<23; row=row+1){
+//         for(int col=1;col<11; col=col+1){
+//             if (game->field[row][col]){
+//                 block_x = field_left + (20*(col-1)) + 10;
+//                 block_y = field_top + (20*(row-3)) + 10;
+//                 draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->field[row][col]));
+//             }
+//             if (game->temp_field[row][col]){
+//                 block_x = field_left + (20*(col-1)) + 10;
+//                 block_y = field_top + (20*(row-3)) + 10;
+//                 draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->temp_field[row][col]));
+//             }
+//         }
+//     }
+// }
+void draw_field(GameInstance* game){
+    // draw playfield grid (edges and lines)
     draw_horiz_line(field_left, field_right, field_top, RGBA_WHITE);
     draw_horiz_line(field_left, field_right, field_bottom, RGBA_WHITE);
     draw_vert_line(field_left, field_top, field_bottom, RGBA_WHITE);
     draw_vert_line(field_right, field_top, field_bottom, RGBA_WHITE);
 
-    //draw each row
-    for(int i=20; i<FIELD_HEIGHT; i=i+20){
-        draw_horiz_line(field_left, field_right, field_top+i, RGBA_BLACK);
+    for(int i = 20; i < FIELD_HEIGHT; i += 20){
+        draw_horiz_line(field_left, field_right, field_top + i, RGBA_BLACK);
     }
 
-    //draw each column
-    for(int j=20; j<FIELD_WIDTH; j=j+20){
-        draw_vert_line(field_left+j, field_top, field_bottom, RGBA_BLACK);
+    for(int j = 20; j < FIELD_WIDTH; j += 20){
+        draw_vert_line(field_left + j, field_top, field_bottom, RGBA_BLACK);
     }
 
-    float block_x;
-    float block_y;
-    //now draw the blocks
-    for(int row=3; row<23; row=row+1){
-        for(int col=1;col<11; col=col+1){
-            if (game->field[row][col]){
-                block_x = field_left + (20*(col-1)) + 10;
-                block_y = field_top + (20*(row-3)) + 10;
+    float block_x, block_y;
+
+    // Draw fixed (committed) blocks
+    for(int row = 3; row < 23; row++){
+        for(int col = 1; col < 11; col++){
+            if (game->field[row][col]) {
+                block_x = field_left + (20 * (col - 1)) + 10;
+                block_y = field_top + (20 * (row - 3)) + 10;
                 draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->field[row][col]));
-            }
-            if (game->temp_field[row][col]){
-                block_x = field_left + (20*(col-1)) + 10;
-                block_y = field_top + (20*(row-3)) + 10;
-                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->temp_field[row][col]));
             }
         }
     }
+
+    // draw active tetro from dummy
+    int size = game->active_tetro.info->size;
+    for (int rel_y = 0; rel_y < size; rel_y++) {
+        for (int rel_x = 0; rel_x < size; rel_x++) {
+            if (game->active_tetro.dummy[rel_y][rel_x] != COLOR_NONE) {
+                int abs_x = game->active_tetro.left_x + rel_x;
+                int abs_y = game->active_tetro.top_y + rel_y;
+
+                // only draw visible part of the field
+                if (abs_y >= 3 && abs_y < 23 && abs_x >= 1 && abs_x < 11) {
+                    block_x = field_left + (20 * (abs_x - 1)) + 10;
+                    block_y = field_top + (20 * (abs_y - 3)) + 10;
+                    draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->active_tetro.info->color));
+                }
+            }
+        }
+    }
+
+    // draw ghost tetromino
+    for (int rel_y = 0; rel_y < size; rel_y++) {
+        for (int rel_x = 0; rel_x < size; rel_x++) {
+            if (game->ghost_tetro.dummy[rel_y][rel_x] != COLOR_NONE) {
+                int abs_x = game->ghost_tetro.left_x + rel_x;
+                int abs_y = game->ghost_tetro.top_y + rel_y;
+                // dbglog(DBG_INFO, "ghost abs x: %d, ghost abs y: %d\n", abs_x, abs_y);
+                if (abs_y >= 3 && abs_y < 23 && abs_x >= 1 && abs_x < 11) {
+                    block_x = field_left + (20 * (abs_x - 1)) + 10;
+                    block_y = field_top + (20 * (abs_y - 3)) + 10;
+                    
+                    draw_square_centered_on(block_x, block_y, 20, 20, RGBA_WHITE);
+                }
+            }
+        }
+    }
+
 }
 
 void clear_line(GameInstance* game, int rownum){
@@ -710,6 +928,12 @@ void draw_hold(GameInstance* game){
         }
     }
 }
+
+// void clone_tetromino(Tetrodata *dst, const Tetrodata *src) {
+//     *dst = *src;
+// }
+
+// void update_ghost_piece(GameInstance *game)
     
 
 void draw_text(float x, float y, char * text){
@@ -750,110 +974,115 @@ void update_pause(GameInstance* game) {
     }
 }
 
-int find_lowest_filled_cell_in_col(BlockColor *column, int height){
-    for (int i=height-1; i>=0; i--){
-        if (column[i]>0) {
-            return i;
-        }
-    }
-    return -1; // none found
-}
+// int find_lowest_filled_cell_in_col(BlockColor *column, int height){
+//     for (int i=height-1; i>=0; i--){
+//         if (column[i]>0) {
+//             return i;
+//         }
+//     }
+//     return -1; // none found
+// }
 
-int find_highest_filled_cell_in_col(BlockColor *column, int height){
-    for (int i=0; i<height; i++){
-        if (column[i]>0) {
-            return i;
-        }
-    }
-    return -1;
-}
+// int find_highest_filled_cell_in_col(BlockColor *column, int height){
+//     for (int i=0; i<height; i++){
+//         if (column[i]>0) {
+//             return i;
+//         }
+//     }
+//     return -1;
+// }
 
-// void get_column(BlockColor *matrix, BlockColor *col_buffer, int col_index, int height) {
-//     for (int row=0; row<height; row++) {
-//         col_buffer[row] = matrix[row][col_index];
+// // void get_column(BlockColor *matrix, BlockColor *col_buffer, int col_index, int height) {
+// //     for (int row=0; row<height; row++) {
+// //         col_buffer[row] = matrix[row][col_index];
+// //     }
+// // }
+// void get_column(BlockColor *matrix, BlockColor *col_buffer, int col_index, int col_height, int row_width) {
+//     for (int row_index = 0; row_index < col_height; row_index++) {
+//         col_buffer[row_index] = matrix[row_index*row_width + col_index];
 //     }
 // }
-void get_column(BlockColor *matrix, BlockColor *col_buffer, int col_index, int col_height, int row_width) {
-    for (int row_index = 0; row_index < col_height; row_index++) {
-        col_buffer[row_index] = matrix[row_index*row_width + col_index];
-    }
-}
 
-int array_min(int *arr, int size) {
-    if (size <= 0) return -1;
+// int array_min(int *arr, int size) {
+//     if (size <= 0) return -1;
 
-    int min = arr[0];
-    for (int i = 1; i < size; i++) {
-        if (arr[i] < min) {
-            min = arr[i];
-        }
-    }
-    return min;
-}
+//     int min = arr[0];
+//     for (int i = 1; i < size; i++) {
+//         if (arr[i] < min) {
+//             min = arr[i];
+//         }
+//     }
+//     return min;
+// }
 
-int determine_hard_drop_distance(GameInstance *game) {
-    // TODO: maybe this should be stored in the active_tetro at the start of the frame ??
-    int size = game->active_tetro.info->size;
+// int determine_hard_drop_distance(GameInstance *game) {
+//     // TODO: maybe this should be stored in the active_tetro at the start of the frame ??
+//     int size = game->active_tetro.info->size;
 
-    int distances[size];
+//     int distances[size];
 
-    for (int tetro_col_index=0; tetro_col_index<size; tetro_col_index++){
-        BlockColor tetro_col[size];
-        get_column(&game->active_tetro.dummy[0][0], tetro_col, tetro_col_index, size, size);
-        int lowest_tetro_cell = find_lowest_filled_cell_in_col(tetro_col, size);
+//     for (int tetro_col_index=0; tetro_col_index<size; tetro_col_index++){
+//         BlockColor tetro_col[size];
+//         get_column(&game->active_tetro.dummy[0][0], tetro_col, tetro_col_index, size, size);
+//         int lowest_tetro_cell = find_lowest_filled_cell_in_col(tetro_col, size);
 
-        // 'i' is referring to the dummy's indexes which are relative to the tetromino
-        // itself; we need to find where this really exists on the field given the
-        // tetromino's current positioning, in order to compare the right columns
-        int field_x = tetro_col_index + game->active_tetro.left_x;
+//         // 'i' is referring to the dummy's indexes which are relative to the tetromino
+//         // itself; we need to find where this really exists on the field given the
+//         // tetromino's current positioning, in order to compare the right columns
+//         int field_x = tetro_col_index + game->active_tetro.left_x;
 
-        const BlockColor (*trimmed_field)[12] = &game->field[3]; // field, but ignoring the top 3 rows
-        BlockColor field_col[21]; // height of full field (24) minus the 3 we chopped off
-        get_column(&trimmed_field[0][0], field_col, field_x, 21, 12);
-        int highest_field_cell = find_highest_filled_cell_in_col(field_col, 21);
+//         const BlockColor (*trimmed_field)[12] = &game->field[3]; // field, but ignoring the top 3 rows
+//         BlockColor field_col[21]; // height of full field (24) minus the 3 we chopped off
+//         get_column(&trimmed_field[0][0], field_col, field_x, 21, 12);
+//         int highest_field_cell = find_highest_filled_cell_in_col(field_col, 21);
 
-        if (highest_field_cell==-1){
-            // this should never happen as the bottom row should always be filled and it 
-            // is included in the call, but this is a failsafe
-            highest_field_cell = 21;
-        }
+//         if (highest_field_cell==-1){
+//             // this should never happen as the bottom row should always be filled and it 
+//             // is included in the call, but this is a failsafe
+//             highest_field_cell = 21;
+//         }
 
-        distances[tetro_col_index] = highest_field_cell+3 - (lowest_tetro_cell+(game->active_tetro.top_y));
-    }
-    return array_min(distances, size);
-}
+//         distances[tetro_col_index] = highest_field_cell+3 - (lowest_tetro_cell+(game->active_tetro.top_y));
+//     }
+//     return array_min(distances, size);
+// }
 
-int time_until_lock = 15;
+// int time_until_lock = 15;
 
 void process_tetro_fall(GameInstance *game) {
     float gravity = gravity_by_level[game->level];
     game->fall_timer += gravity;
     int blocks_to_fall = 0;
-    // dbglog(DBG_INFO, "gravity: %f\nfall timer: %f\n", gravity, game->fall_timer);
+    // //dbglog(DBG_INFO, "gravity: %f\nfall timer: %f\n", gravity, game->fall_timer);
 
+    //dbglog(DBG_INFO, "process_tetro_fall: fall timer: %f\n", game->fall_timer);
+    //dbglog(DBG_INFO, "process_tetro_fall: hard drop distance: %d\n", game->hard_drop_distance);
 
     if (game->fall_timer > 1.0f) {
         blocks_to_fall = (int)game->fall_timer;
         game->fall_timer -= (float)blocks_to_fall;
 
-        int hard_drop_distance = determine_hard_drop_distance(game);
+        int hard_drop_distance = game->hard_drop_distance;
         dbglog(DBG_INFO, "Current hard drop distance: %d\n", hard_drop_distance);
         if (blocks_to_fall >= hard_drop_distance) {
             blocks_to_fall = hard_drop_distance;
         }
         if (blocks_to_fall == 0) {
-            if (time_until_lock > 0) {
-                time_until_lock--;
-            }
-            else (
-                commit_tetro(game);
-                time_until_lock = 15;
-            )
+            // if (time_until_lock > 0) {
+                // time_until_lock--;
+                //dbglog(DBG_INFO, "Time until lock: %d", time_until_lock);
+            // }
+            // else {
+            commit_active_tetro(game);
+            game->active_tetro.set=1;
+                // time_until_lock = 15;
+            // }
         }
         else {
             move_tetro_like_this(&game->active_tetro, 0, blocks_to_fall);
         }
-        replot_active_tetro(game);
+        game->hard_drop_distance = find_hard_drop_distance(game);
+        // replot_active_tetro(game);
     }
 }
 
@@ -872,18 +1101,24 @@ void draw_frame_gameplay(GameInstance* game){
         
         if(!paused){
             process_tetro_movement(game);
+            //dbglog(DBG_INFO, "process_tetro_movement() done\n");
+
 
             // game->fall_timer -= 1;
 
             if(game->active_tetro.set==1 || game->first_run==1){
+                //dbglog(DBG_INFO, "calling check_lines()\n");
                 check_lines(game);
+                //dbglog(DBG_INFO, "calling generate_new_tetro()\n");
                 generate_new_tetro(game);
                 game->hold_eligible=1;
                 // game->fall_timer=game->falltime;
                 game->first_run=0;
             }
-
+            //dbglog(DBG_INFO, "calling process_tetro_fall()\n");
             process_tetro_fall(game);
+            //dbglog(DBG_INFO, "process_tetro_fall() done\n");
+
             // if(game->fall_timer<=0){
             //     game->fall_timer=game->falltime;
             //     tetro_fall(game, 0);
@@ -925,20 +1160,25 @@ int main(){
 
     int exitProgram = 0;
 
+    //dbglog(DBG_INFO, "Calling init()\n");
     init();
 
-    // use this for logging/debugging
-    dbglog(DBG_INFO, "HELLO WORLD!!!\n");
+    //dbglog(DBG_INFO, "HELLO WORLD!!!\n");
 
 
     GameInstance game;
+    //dbglog(DBG_INFO, "Calling init_game_instance()\n");
     init_game_instance(&game);
+    //dbglog(DBG_INFO, "init_game_instance() done\n");
 
     while(!exitProgram){
         update_inputs(&game.input, 0);
+        //dbglog(DBG_INFO, "update_inputs() done\n");
+
         // dbg_print_controller(&game.input);
         // update_logic(&game);
         draw_frame_gameplay(&game);
+        //dbglog(DBG_INFO, "draw_frame_gameplay() done\n");
     }
 
     // maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
