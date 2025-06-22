@@ -97,7 +97,7 @@ ColorRgba get_argb_from_blockcolor(BlockColor color){
 void init(){
     pvr_init_defaults();
 
-    pvr_set_bg_color(0.0,1.0,0.3);
+    pvr_set_bg_color(201.0f/255.0f, 195.0f/255.0f, 1.0f);
 
     // maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
     // vmu_draw_lcd(vmu, vmu_carl);
@@ -118,7 +118,7 @@ void draw_triangle(float x1, float y1,
     pvr_poly_cxt_t cxt;
     pvr_vertex_t vert;
 
-    pvr_poly_cxt_col(&cxt, PVR_LIST_TR_POLY);
+    pvr_poly_cxt_col(&cxt, PVR_LIST_OP_POLY);
     pvr_poly_compile(&hdr, &cxt);
     pvr_prim(&hdr, sizeof(hdr));
 
@@ -142,7 +142,7 @@ void draw_triangle(float x1, float y1,
     pvr_prim(&vert, sizeof(vert));
 }
 
-void draw_square(float left, float right, float top, float bottom, ColorRgba argb) {
+void draw_square(float left, float right, float top, float bottom, ColorRgba argb, int pvr_list_type, float z) {
     pvr_poly_hdr_t hdr;
     pvr_poly_cxt_t cxt;
     pvr_vertex_t vert;
@@ -166,7 +166,12 @@ void draw_square(float left, float right, float top, float bottom, ColorRgba arg
         right = swap_x;
     }
 
-    pvr_poly_cxt_col(&cxt, PVR_LIST_TR_POLY);
+    pvr_poly_cxt_col(&cxt, pvr_list_type);
+
+    if (pvr_list_type == PVR_LIST_TR_POLY) {
+        cxt.gen.alpha = PVR_ALPHA_ENABLE;
+    }
+
     pvr_poly_compile(&hdr, &cxt);
 
     pvr_prim(&hdr, sizeof(hdr));
@@ -174,10 +179,11 @@ void draw_square(float left, float right, float top, float bottom, ColorRgba arg
     // bottom left
     vert.x = left;
     vert.y = bottom;
-    vert.z = 5.0f;
+    // vert.z = 5.0f;
+    vert.z = z;
     vert.u = 0;
     vert.v = 0;
-    vert.argb = PVR_PACK_COLOR(argb.a/255, argb.r/255, argb.g/255, argb.b/255);
+    vert.argb = PVR_PACK_COLOR(argb.a/255.0f, argb.r/255.0f, argb.g/255.0f, argb.b/255.0f);
     vert.oargb = 0;
     pvr_prim(&vert, sizeof(vert));
 
@@ -195,20 +201,20 @@ void draw_square(float left, float right, float top, float bottom, ColorRgba arg
     vert.y = top;
     pvr_prim(&vert, sizeof(vert));
 }
-void draw_square_centered_on(float center_x, float center_y, float width, float height, ColorRgba argb) {
+void draw_square_centered_on(float center_x, float center_y, float width, float height, ColorRgba argb, int pvr_list_type, float z) {
     float left = center_x - (width/2);
     float right = center_x + (width/2);
     float top = center_y - (height/2);
     float bottom = center_y + (height/2);
-    draw_square(left, right, top, bottom, argb);
+    draw_square(left, right, top, bottom, argb, pvr_list_type, z);
 }
 
-void draw_vert_line(float x, float top, float bottom, ColorRgba argb) {
-    draw_square(x, x+1, top, bottom, argb);
+void draw_vert_line(float x, float top, float bottom, ColorRgba argb, int pvr_list_type, float z) {
+    draw_square(x, x+1, top, bottom, argb, pvr_list_type, z);
 }
 
-void draw_horiz_line(float left, float right, float y, ColorRgba argb) {
-    draw_square(left, right, y, y+1, argb);
+void draw_horiz_line(float left, float right, float y, ColorRgba argb, int pvr_list_type, float z) {
+    draw_square(left, right, y, y+1, argb, pvr_list_type, z);
 }
 
 void init_new_tetro(GameInstance* game, TetrominoType type){
@@ -244,7 +250,7 @@ void commit_active_tetro(GameInstance* game){
     // data structure to "set" it.
     // THIS DOES NOT DO CHECKS to validate position! Check it first with check_valid_state()
 
-    dbglog(DBG_INFO, "commiting tetromino with left x %d, top y %d\n",game->active_tetro.left_x,game->active_tetro.top_y);
+    // dbglog(DBG_INFO, "commiting tetromino with left x %d, top y %d\n",game->active_tetro.left_x,game->active_tetro.top_y);
 
     int size = game->active_tetro.info->size;
     for (int relative_y = 0; relative_y < size; relative_y++) {
@@ -313,17 +319,17 @@ void tetro_right(GameInstance* game){
 void update_ghost_piece(GameInstance* game){
     game->ghost_tetro.top_y = game->active_tetro.top_y + game->hard_drop_distance;
     game->ghost_tetro.left_x = game->active_tetro.left_x;
-    dbglog(DBG_INFO, "ghost tetro top y: %d, hard drop distance: %d\n", game->ghost_tetro.top_y, game->hard_drop_distance);
+    // dbglog(DBG_INFO, "ghost tetro top y: %d, hard drop distance: %d\n", game->ghost_tetro.top_y, game->hard_drop_distance);
 }
 
 void tetro_fall(GameInstance* game, int award_score, int commit){
     // one block at a time
-    dbglog(DBG_INFO, "tetro_fall: old tetro top y: %d\n", game->active_tetro.top_y);
+    // dbglog(DBG_INFO, "tetro_fall: old tetro top y: %d\n", game->active_tetro.top_y);
     game->active_tetro.top_y += 1;
-    dbglog(DBG_INFO, "tetro_fall: new tetro top y: %d\n", game->active_tetro.top_y);
+    // dbglog(DBG_INFO, "tetro_fall: new tetro top y: %d\n", game->active_tetro.top_y);
 
     if(!check_valid_state(game)){
-        dbglog(DBG_INFO, "%d is invalid\n", game->active_tetro.top_y);
+        // dbglog(DBG_INFO, "%d is invalid\n", game->active_tetro.top_y);
         game->active_tetro.top_y -= 1; //undo it
         if (commit) {
             commit_active_tetro(game);
@@ -600,20 +606,43 @@ void generate_new_tetro(GameInstance* game){
     }
 }
 
-void draw_field(GameInstance* game){
+void draw_playfield_grid(GameInstance* game) { // TRANSL
     // draw playfield grid (edges and lines)
-    draw_horiz_line(field_left, field_right, field_top, RGBA_WHITE);
-    draw_horiz_line(field_left, field_right, field_bottom, RGBA_WHITE);
-    draw_vert_line(field_left, field_top, field_bottom, RGBA_WHITE);
-    draw_vert_line(field_right, field_top, field_bottom, RGBA_WHITE);
 
+    // z = 0.1
+    draw_horiz_line(field_left, field_right, field_top, RGBA_WHITE, PVR_LIST_TR_POLY, 5.0f);
+    draw_horiz_line(field_left, field_right, field_bottom, RGBA_WHITE, PVR_LIST_TR_POLY, 5.0f);
+    draw_vert_line(field_left, field_top, field_bottom, RGBA_WHITE, PVR_LIST_TR_POLY, 5.0f);
+    draw_vert_line(field_right, field_top, field_bottom, RGBA_WHITE, PVR_LIST_TR_POLY, 5.0f);
+
+    // z = 0.2
+    // opacity = 50
+    const ColorRgba black_half_opac = {
+        0, 0, 0, 160
+    };
     for(int i = 20; i < FIELD_HEIGHT; i += 20){
-        draw_horiz_line(field_left, field_right, field_top + i, RGBA_BLACK);
+        draw_horiz_line(field_left, field_right, field_top + i, black_half_opac, PVR_LIST_TR_POLY, 4.6f);
     }
 
     for(int j = 20; j < FIELD_WIDTH; j += 20){
-        draw_vert_line(field_left + j, field_top, field_bottom, RGBA_BLACK);
+        draw_vert_line(field_left + j, field_top, field_bottom, black_half_opac, PVR_LIST_TR_POLY, 4.6f);
     }
+}
+
+void draw_field(GameInstance* game){ // OPAQUE
+    // // draw playfield grid (edges and lines)
+    // draw_horiz_line(field_left, field_right, field_top, RGBA_WHITE);
+    // draw_horiz_line(field_left, field_right, field_bottom, RGBA_WHITE);
+    // draw_vert_line(field_left, field_top, field_bottom, RGBA_WHITE);
+    // draw_vert_line(field_right, field_top, field_bottom, RGBA_WHITE);
+
+    // for(int i = 20; i < FIELD_HEIGHT; i += 20){
+    //     draw_horiz_line(field_left, field_right, field_top + i, RGBA_BLACK);
+    // }
+
+    // for(int j = 20; j < FIELD_WIDTH; j += 20){
+    //     draw_vert_line(field_left + j, field_top, field_bottom, RGBA_BLACK);
+    // }
 
     float block_x, block_y;
 
@@ -623,29 +652,30 @@ void draw_field(GameInstance* game){
             if (game->field[row][col]) {
                 block_x = field_left + (20 * (col - 1)) + 10;
                 block_y = field_top + (20 * (row - 3)) + 10;
-                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->field[row][col]));
+                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->field[row][col]), PVR_LIST_OP_POLY, 4.0f);
             }
         }
     }
     int size = game->active_tetro.info->size;
 
     // draw ghost tetromino
-    for (int rel_y = 0; rel_y < size; rel_y++) {
-        for (int rel_x = 0; rel_x < size; rel_x++) {
-            if (game->ghost_tetro.dummy[rel_y][rel_x] != COLOR_NONE) {
-                int abs_x = game->ghost_tetro.left_x + rel_x;
-                int abs_y = game->ghost_tetro.top_y + rel_y;
-                if (abs_y >= 3 && abs_y < 23 && abs_x >= 1 && abs_x < 11) {
-                    block_x = field_left + (20 * (abs_x - 1)) + 10;
-                    block_y = field_top + (20 * (abs_y - 3)) + 10;
+    // for (int rel_y = 0; rel_y < size; rel_y++) {
+    //     for (int rel_x = 0; rel_x < size; rel_x++) {
+    //         if (game->ghost_tetro.dummy[rel_y][rel_x] != COLOR_NONE) {
+    //             int abs_x = game->ghost_tetro.left_x + rel_x;
+    //             int abs_y = game->ghost_tetro.top_y + rel_y;
+    //             if (abs_y >= 3 && abs_y < 23 && abs_x >= 1 && abs_x < 11) {
+    //                 block_x = field_left + (20 * (abs_x - 1)) + 10;
+    //                 block_y = field_top + (20 * (abs_y - 3)) + 10;
                     
-                    draw_square_centered_on(block_x, block_y, 20, 20, RGBA_WHITE);
-                }
-            }
-        }
-    }
+    //                 draw_square_centered_on(block_x, block_y, 20, 20, RGBA_WHITE);
+    //             }
+    //         }
+    //     }
+    // }
 
     // draw active tetro from dummy
+    game->ghost_count = 0;
     for (int rel_y = 0; rel_y < size; rel_y++) {
         for (int rel_x = 0; rel_x < size; rel_x++) {
             if (game->active_tetro.dummy[rel_y][rel_x] != COLOR_NONE) {
@@ -656,7 +686,19 @@ void draw_field(GameInstance* game){
                 if (abs_y >= 3 && abs_y < 23 && abs_x >= 1 && abs_x < 11) {
                     block_x = field_left + (20 * (abs_x - 1)) + 10;
                     block_y = field_top + (20 * (abs_y - 3)) + 10;
-                    draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->active_tetro.info->color));
+                    draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->active_tetro.info->color), PVR_LIST_OP_POLY, 4.0f);
+                }
+            }
+            
+            // ghost tetromino
+            if (game->ghost_tetro.dummy[rel_y][rel_x] != COLOR_NONE) {
+                int abs_x = game->ghost_tetro.left_x + rel_x;
+                int abs_y = game->ghost_tetro.top_y + rel_y;
+                if (abs_y >= 3 && abs_y < 23 && abs_x >= 1 && abs_x < 11) {
+                    block_x = field_left + (20 * (abs_x - 1)) + 10;
+                    block_y = field_top + (20 * (abs_y - 3)) + 10;
+                    game->ghost_tiles[game->ghost_count++] = (Point){block_x, block_y};
+                    // draw_square_centered_on(block_x, block_y, 20, 20, RGBA_WHITE);
                 }
             }
         }
@@ -747,7 +789,7 @@ void draw_hold(GameInstance* game){
             if(held_tetro_info->shape[row][col]){
                 block_x= hold_left + (20*(col-1)) + 10;
                 block_y = hold_top + (20*(row-1)) + 10;
-                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(held_tetro_info->color));
+                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(held_tetro_info->color), PVR_LIST_OP_POLY, 4.0f);
             }
         }
     }
@@ -782,7 +824,7 @@ void draw_hud(GameInstance* game){
     sprintf(lines_string, "%d", game->line_clears);
     draw_text(500,340,lines_string);
 
-    draw_hold(game);
+
 }
 
 void update_pause(GameInstance* game) {
@@ -801,7 +843,7 @@ void process_tetro_fall(GameInstance *game) {
         game->fall_timer -= (float)blocks_to_fall;
 
         int hard_drop_distance = game->hard_drop_distance;
-        dbglog(DBG_INFO, "Current hard drop distance: %d\n", hard_drop_distance);
+        // dbglog(DBG_INFO, "Current hard drop distance: %d\n", hard_drop_distance);
         if (blocks_to_fall >= hard_drop_distance) {
             blocks_to_fall = hard_drop_distance;
         }
@@ -847,14 +889,9 @@ void draw_frame_gameplay(GameInstance* game){
 
     pvr_list_begin(PVR_LIST_OP_POLY);
     //opaque drawing here
-    pvr_list_finish();
 
-    pvr_list_begin(PVR_LIST_TR_POLY);
-    //translucent drawing here
-    
     draw_field(game);
-
-    draw_hud(game);
+    draw_hold(game);
 
     if(game->loss){
         draw_text(50,200,"You lost!");
@@ -863,6 +900,17 @@ void draw_frame_gameplay(GameInstance* game){
 
     if (paused){
         draw_text(50, 200, "PAUSED");
+    }
+    pvr_list_finish();
+
+    pvr_list_begin(PVR_LIST_TR_POLY);
+    
+    draw_playfield_grid(game);
+
+    draw_hud(game);
+    //todo move this to function
+    for (int i=0; i<game->ghost_count; i++){
+        draw_square_centered_on(game->ghost_tiles[i].x, game->ghost_tiles[i].y, 20, 20, (ColorRgba){255, 255, 255, 128}, PVR_LIST_TR_POLY, 3.5f);
     }
 
     pvr_list_finish();

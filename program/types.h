@@ -110,6 +110,10 @@ typedef struct {
 } InputState;
 
 typedef struct {
+    int x, y;
+} Point;
+
+typedef struct {
     BlockColor field[24][12];
 
     // This variable an empty version of the field matrix. It is where the current active tetromino is put.
@@ -150,6 +154,9 @@ typedef struct {
     InputState input;
 
     float gravity;
+
+    Point ghost_tiles[16];
+    int ghost_count;
 
 } GameInstance;
 
