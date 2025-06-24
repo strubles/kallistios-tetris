@@ -3,10 +3,16 @@
 
 #include "types.h"
 
-#define SCREEN_WIDTH 640
-#define SCREEN_HEIGHT 480
-#define FIELD_HEIGHT 400 // 20 blocks x 20 pixels each
-#define FIELD_WIDTH 200  // 10 blocks x 20 pixels each
+#define SCREEN_WIDTH_PIXELS 640
+#define SCREEN_HEIGHT_PIXELS 480
+#define FIELD_HEIGHT_PIXELS 400 // 20 blocks x 20 pixels each
+#define FIELD_WIDTH_PIXELS 200  // 10 blocks x 20 pixels each
+
+#define Z_TEXT       5.0f   // front-most
+#define Z_GHOST      4.8f
+#define Z_GRID       4.6f
+#define Z_TETRO      4.5f
+#define Z_BG         4.0f   // back-most
 
 // Kick table declarations
 extern const int kicks_cw[4][5][2];

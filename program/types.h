@@ -49,8 +49,8 @@ typedef struct {
     int shape[4][4];
 
     int perform_kicks; // bool
-    int (*kicks_cw)[5][2];
-    int (*kicks_ccw)[5][2];
+    const int (*kicks_cw)[5][2];
+    const int (*kicks_ccw)[5][2];
     int initial_left_x;
     int initial_top_y;
 } TetrominoInfo;

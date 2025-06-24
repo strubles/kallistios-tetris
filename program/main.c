@@ -27,6 +27,8 @@
 #include "constants.h"
 #include "debug.h"
 #include "input.h"
+#include "tetromino.h"
+#include "render.h"
 
 // font stuff
 #include <plx/font.h>
@@ -44,6 +46,18 @@ int pause_button_released=1;
 extern uint8 romdisk[];
 KOS_INIT_FLAGS(INIT_DEFAULT);
 KOS_INIT_ROMDISK(romdisk);
+
+void init(){
+    pvr_init_defaults();
+
+    // pvr_set_bg_color(201.0f/255.0f, 195.0f/255.0f, 1.0f);
+
+    // maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
+    // vmu_draw_lcd(vmu, vmu_carl);
+
+    fnt = plx_font_load("/rd/typewriter.txf");
+    fnt_cxt = plx_fcxt_create(fnt, PVR_LIST_TR_POLY);
+}
 
 void init_game_instance(GameInstance* game){
     paused = 0;
@@ -73,200 +87,6 @@ void init_game_instance(GameInstance* game){
     shuffle_bag(game);
 }
 
-ColorRgba get_argb_from_blockcolor(BlockColor color){
-    switch(color){
-        case COLOR_RED:
-            return RGBA_RED;
-        case COLOR_ORANGE:
-            return RGBA_ORANGE;
-        case COLOR_YELLOW:
-            return RGBA_YELLOW;
-        case COLOR_GREEN:
-            return RGBA_GREEN;
-        case COLOR_CYAN:
-            return RGBA_CYAN;
-        case COLOR_BLUE:
-            return RGBA_BLUE;
-        case COLOR_PURPLE:
-            return RGBA_PURPLE;
-        default:
-            return RGBA_WHITE;
-    }
-}
-
-void init(){
-    pvr_init_defaults();
-
-    pvr_set_bg_color(201.0f/255.0f, 195.0f/255.0f, 1.0f);
-
-    // maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
-    // vmu_draw_lcd(vmu, vmu_carl);
-
-    plx_font_t * fnt = plx_font_load("/rd/typewriter.txf");
-
-    fnt_cxt = plx_fcxt_create(fnt, PVR_LIST_TR_POLY);
-
-}
-
-void draw_triangle(float x1, float y1,
-                   float x2, float y2,
-                   float x3, float y3,
-                   ColorRgba argb)
-                   {
-    // POINTS SUBMITTED MUST BE IN CLOCKWISE ORDER
-    pvr_poly_hdr_t hdr;
-    pvr_poly_cxt_t cxt;
-    pvr_vertex_t vert;
-
-    pvr_poly_cxt_col(&cxt, PVR_LIST_OP_POLY);
-    pvr_poly_compile(&hdr, &cxt);
-    pvr_prim(&hdr, sizeof(hdr));
-
-    vert.flags = PVR_CMD_VERTEX;
-    vert.x = x1;
-    vert.y = y1;
-    vert.z = 5.0f;
-    vert.u = 0;
-    vert.v = 0;
-    vert.argb = PVR_PACK_COLOR(argb.a/255, argb.r/255, argb.g/255, argb.b/255);
-    vert.oargb = 0;
-    pvr_prim(&vert, sizeof(vert));
-
-    vert.x = x2;
-    vert.y = y2;
-    pvr_prim(&vert, sizeof(vert));
-
-    vert.flags = PVR_CMD_VERTEX_EOL; //tells PVR that this will be the final point
-    vert.x = x3;
-    vert.y = y3;
-    pvr_prim(&vert, sizeof(vert));
-}
-
-void draw_square(float left, float right, float top, float bottom, ColorRgba argb, int pvr_list_type, float z) {
-    pvr_poly_hdr_t hdr;
-    pvr_poly_cxt_t cxt;
-    pvr_vertex_t vert;
-
-    // x1 = left
-    // x2 = right
-    // y1 = top
-    // y2 = bottom
-
-    if(top>bottom) {
-        float swap_y;
-        swap_y = top;
-        top = bottom;
-        bottom = swap_y;
-    }
-
-    if(left>right) {
-        float swap_x;
-        swap_x = left;
-        left = right;
-        right = swap_x;
-    }
-
-    pvr_poly_cxt_col(&cxt, pvr_list_type);
-
-    if (pvr_list_type == PVR_LIST_TR_POLY) {
-        cxt.gen.alpha = PVR_ALPHA_ENABLE;
-    }
-
-    pvr_poly_compile(&hdr, &cxt);
-
-    pvr_prim(&hdr, sizeof(hdr));
-    vert.flags = PVR_CMD_VERTEX;
-    // bottom left
-    vert.x = left;
-    vert.y = bottom;
-    // vert.z = 5.0f;
-    vert.z = z;
-    vert.u = 0;
-    vert.v = 0;
-    vert.argb = PVR_PACK_COLOR(argb.a/255.0f, argb.r/255.0f, argb.g/255.0f, argb.b/255.0f);
-    vert.oargb = 0;
-    pvr_prim(&vert, sizeof(vert));
-
-    // top left
-    vert.y = top;
-    pvr_prim(&vert, sizeof(vert));
-
-    // bottom right
-    vert.x = right;
-    vert.y = bottom;
-    pvr_prim(&vert, sizeof(vert));
-
-    // top right
-    vert.flags = PVR_CMD_VERTEX_EOL;
-    vert.y = top;
-    pvr_prim(&vert, sizeof(vert));
-}
-void draw_square_centered_on(float center_x, float center_y, float width, float height, ColorRgba argb, int pvr_list_type, float z) {
-    float left = center_x - (width/2);
-    float right = center_x + (width/2);
-    float top = center_y - (height/2);
-    float bottom = center_y + (height/2);
-    draw_square(left, right, top, bottom, argb, pvr_list_type, z);
-}
-
-void draw_vert_line(float x, float top, float bottom, ColorRgba argb, int pvr_list_type, float z) {
-    draw_square(x, x+1, top, bottom, argb, pvr_list_type, z);
-}
-
-void draw_horiz_line(float left, float right, float y, ColorRgba argb, int pvr_list_type, float z) {
-    draw_square(left, right, y, y+1, argb, pvr_list_type, z);
-}
-
-void init_new_tetro(GameInstance* game, TetrominoType type){
-    // populates the active_tetro variable with data representing a newly spawned
-    // tetromino of type 'type'.
-    // It fills the "dummy" tetromino array with a fresh copy of that tetromino's
-    // .shape array
-
-    const TetrominoInfo *info = &tetromino_infos[type];
-
-    game->active_tetro.type = type;
-    game->active_tetro.left_x = info->initial_left_x;
-    game->active_tetro.top_y = info->initial_top_y;
-    game->active_tetro.info = info;
-    game->active_tetro.orientation = DEFAULT;
-    game->active_tetro.set = 0;
-    game->ghost_tetro.dummy = game->active_tetro.dummy;
-
-    // reset the holder to its initial state
-    memset(game->active_tetro.dummy, 0, sizeof(game->active_tetro.dummy));
-    for (int i=0; i<info->size; i++) {
-        for (int j=0; j<info->size; j++) {
-            game->active_tetro.dummy[i][j] = info->shape[i][j];
-        }
-    }
-
-    game->hard_drop_distance = find_hard_drop_distance(game);
-    update_ghost_piece(game);
-}
-
-void commit_active_tetro(GameInstance* game){
-    // The active tetromino gets copied from the active tetromino array to the main field
-    // data structure to "set" it.
-    // THIS DOES NOT DO CHECKS to validate position! Check it first with check_valid_state()
-
-    // dbglog(DBG_INFO, "commiting tetromino with left x %d, top y %d\n",game->active_tetro.left_x,game->active_tetro.top_y);
-
-    int size = game->active_tetro.info->size;
-    for (int relative_y = 0; relative_y < size; relative_y++) {
-        for (int relative_x = 0; relative_x < size; relative_x++) {
-            if (game->active_tetro.dummy[relative_y][relative_x] != COLOR_NONE) {
-
-                // convert relative tetro array coordinates to absolute field coordinates
-                int field_x = game->active_tetro.left_x + relative_x;
-                int field_y = game->active_tetro.top_y + relative_y;
-
-                game->field[field_y][field_x] = game->active_tetro.info->color;
-            }
-        }
-    }
-}
-
 int check_valid_state(GameInstance* game){
 
     int size = game->active_tetro.info->size;
@@ -280,9 +100,9 @@ int check_valid_state(GameInstance* game){
                 int field_y = game->active_tetro.top_y + relative_y;
 
                 // Check out-of-bounds
-                if (field_x < 0 || field_x >= FIELD_WIDTH || field_y < 0 || field_y >= FIELD_HEIGHT) {
-                    return 0;
-                }
+                // if (field_x < 0 || field_x >= FIELD_WIDTH_PIXELS || field_y < 0 || field_y >= FIELD_HEIGHT_PIXELS) {
+                //     return 0;
+                // }
 
                 int field_block = game->field[field_y][field_x];
 
@@ -293,416 +113,6 @@ int check_valid_state(GameInstance* game){
         }
     }
     return 1;
-}
-
-
-void tetro_left(GameInstance* game){
-    game->active_tetro.left_x -= 1;
-    if(!check_valid_state(game)){
-        game->active_tetro.left_x += 1; //undo it
-    } else {
-        game->hard_drop_distance = find_hard_drop_distance(game);
-        update_ghost_piece(game);
-    }
-}
-
-void tetro_right(GameInstance* game){
-    game->active_tetro.left_x += 1;
-    if(!check_valid_state(game)){
-        game->active_tetro.left_x -= 1; //undo it
-    } else {
-        game->hard_drop_distance = find_hard_drop_distance(game);
-        update_ghost_piece(game);
-    }
-}
-
-void update_ghost_piece(GameInstance* game){
-    game->ghost_tetro.top_y = game->active_tetro.top_y + game->hard_drop_distance;
-    game->ghost_tetro.left_x = game->active_tetro.left_x;
-    // dbglog(DBG_INFO, "ghost tetro top y: %d, hard drop distance: %d\n", game->ghost_tetro.top_y, game->hard_drop_distance);
-}
-
-void tetro_fall(GameInstance* game, int award_score, int commit){
-    // one block at a time
-    // dbglog(DBG_INFO, "tetro_fall: old tetro top y: %d\n", game->active_tetro.top_y);
-    game->active_tetro.top_y += 1;
-    // dbglog(DBG_INFO, "tetro_fall: new tetro top y: %d\n", game->active_tetro.top_y);
-
-    if(!check_valid_state(game)){
-        // dbglog(DBG_INFO, "%d is invalid\n", game->active_tetro.top_y);
-        game->active_tetro.top_y -= 1; //undo it
-        if (commit) {
-            commit_active_tetro(game);
-            game->active_tetro.set=1;
-        }
-    }
-    else {
-        if(award_score){
-            game->score+=1;
-        }
-        game->hard_drop_distance = find_hard_drop_distance(game);//, game->active_tetro);
-        update_ghost_piece(game);
-    }
-}
-
-void hard_drop(GameInstance* game) {
-    game->active_tetro.top_y += game->hard_drop_distance;
-    commit_active_tetro(game);
-    game->active_tetro.set=1;
-}
-
-int find_hard_drop_distance(GameInstance* game){
-    int orig_y = game->active_tetro.top_y;
-
-    int blocks_fallen = 0;
-
-    while (1) {
-        game->active_tetro.top_y += 1;
-        if (!check_valid_state(game)) {
-            game->active_tetro.top_y -= 1; // undo
-            break;
-        }
-        else {
-            blocks_fallen++;
-        }
-    }
-
-    game->active_tetro.top_y = orig_y;
-    return blocks_fallen;
-}
-
-void swap(int* arg1, int* arg2)
-// Swap the two values in memory (in place)
-// Used in tetromino rotation
-{
-    int buffer = *arg1;
-    *arg1 = *arg2;
-    *arg2 = buffer;
-}
-
-void transpose_active_tetro(GameInstance* game){
-    // Flips the array of the active tetromino along the diagonal (in place)
-    // (for tetromino rotation)
-
-    int n = game->active_tetro.info->size;
-    for (int i = 0; i < n; i++) {
-        for (int j = i + 1; j < n; j++) {
-            swap(&(game->active_tetro.dummy[i][j]), &(game->active_tetro.dummy[j][i]));
-        }
-    }
-}
-
-void reverse_active_tetro_row(GameInstance* game, int row) {
-    // Reverse the given row in the active tetromino array (in place)
-    // (for tetromino rotation)
-
-    int n = game->active_tetro.info->size;
-
-    // Reverse the elements in the specified row
-    for (int i = 0; i < n / 2; i++) {
-        int temp = game->active_tetro.dummy[row][i];
-        game->active_tetro.dummy[row][i] = game->active_tetro.dummy[row][n - i - 1];
-        game->active_tetro.dummy[row][n - i - 1] = temp;
-    }
-}
-
-void update_orientation_cw(Tetrodata* tetro){
-    tetro->orientation++;
-    if(tetro->orientation>3){
-        tetro->orientation=0;
-    }
-}
-
-void update_orientation_ccw(Tetrodata* tetro){
-    tetro->orientation--;
-    if(tetro->orientation<0){
-        tetro->orientation=3;
-    }
-}
-
-void move_tetro_like_this(Tetrodata* tetro, int x, int y){
-    tetro->left_x+=x;
-    tetro->top_y+=y;
-}
-
-void rotate_tetro_clockwise(GameInstance* game){
-    if (game->active_tetro.type == TETRO_O) {
-        return;
-    }
-
-    // first test is plain rotation, no offset
-
-    // 1. transpose
-    transpose_active_tetro(game);
-    // 2. reverse rows
-    for (int i=0; i < game->active_tetro.info->size; i++) {
-        reverse_active_tetro_row(game, i);
-    }
-
-    if (check_valid_state(game)) {
-        update_orientation_cw(&game->active_tetro);
-        game->hard_drop_distance = find_hard_drop_distance(game);
-        update_ghost_piece(game);
-        return;
-    }
-
-    const TetrominoInfo *info = game->active_tetro.info;
-
-    // If the basic rotation failed, iterate through the kick tests til we find a working one
-
-    int rotation_type_index = game->active_tetro.orientation;
-
-    for (int test_index = 0; test_index <= 3; test_index++) {
-
-        move_tetro_like_this(
-            &game->active_tetro,
-            info->kicks_cw[rotation_type_index][test_index][0],
-            info->kicks_cw[rotation_type_index][test_index][1]
-        );
-
-        if (check_valid_state(game)) {
-            update_orientation_cw(&game->active_tetro);
-            game->hard_drop_distance = find_hard_drop_distance(game);
-            update_ghost_piece(game);
-            return;
-        }
-    }
-
-    // Never found a valid one; undo
-    // (The last "test" is actually an "undo" offset to get back to the original location)
-
-    move_tetro_like_this(&game->active_tetro,
-                         info->kicks_cw[rotation_type_index][4][0],
-                         info->kicks_cw[rotation_type_index][4][1]);
-
-    for (int i=0; i < game->active_tetro.info->size; i++) {
-        reverse_active_tetro_row(game, i);
-    }
-    transpose_active_tetro(game);
-}
-
-void rotate_tetro_counterclockwise(GameInstance* game){
-    if (game->active_tetro.type == TETRO_O) {
-        return;
-    }
-
-    // 1. reverse rows
-    for (int i=0; i < game->active_tetro.info->size; i++) {
-        reverse_active_tetro_row(game, i);
-    }
-    // 2. transpose
-    transpose_active_tetro(game);
-
-    if (check_valid_state(game)) {
-        update_orientation_ccw(&game->active_tetro);
-        game->hard_drop_distance = find_hard_drop_distance(game);
-        update_ghost_piece(game);
-        return;
-    }
-
-    const TetrominoInfo *info = game->active_tetro.info;
-    int rotation_type_index = game->active_tetro.orientation;
-
-    for (int test_index = 0; test_index <= 3; test_index++) {
-
-        move_tetro_like_this(
-            &game->active_tetro,
-            info->kicks_ccw[rotation_type_index][test_index][0],
-            info->kicks_ccw[rotation_type_index][test_index][1]
-        );
-
-        if (check_valid_state(game)) {
-            update_orientation_ccw(&game->active_tetro);
-            game->hard_drop_distance = find_hard_drop_distance(game);
-            update_ghost_piece(game);
-            return;
-        }
-    }
-
-    move_tetro_like_this(&game->active_tetro,
-                         info->kicks_ccw[rotation_type_index][4][0],
-                         info->kicks_ccw[rotation_type_index][4][1]);
-
-    transpose_active_tetro(game);
-    for (int i=0; i < game->active_tetro.info->size; i++) {
-        reverse_active_tetro_row(game, i);
-    }
-}
-
-void hold_tetromino(GameInstance* game){
-
-    const TetrominoInfo *tetromino_to_hold = game->active_tetro.info;
-    
-    if(game->held_tetro){ //if there's currently a tetromino already in the hold
-        // swap it
-        init_new_tetro(game, game->held_tetro->type);
-        game->held_tetro = tetromino_to_hold;
-    }
-    else {
-        //otherwise, make a new one
-        game->held_tetro = tetromino_to_hold;
-        generate_new_tetro(game);
-    }
-    game->hold_eligible=0;
-}
-
-int process_tetro_movement(GameInstance* game){
-    // the triggers on the sega dreamcast are analog triggers that range from 0-255
-    // I have the hold function trigger if it's at least half-pressed (128)
-    if(game->input.trigger_left >= 128 && game->hold_eligible){
-        hold_tetromino(game);
-        game->hold_eligible=0;
-    }
-
-    if(game->input.dpad_up.just_pressed){
-        hard_drop(game);
-        game->move_timebuffer=10;
-        return 0;
-    }
-
-    if(game->move_timebuffer<=0){
-        if(game->input.dpad_down.pressed){
-            // softdrop
-            tetro_fall(game, 1, 1);
-            game->move_timebuffer=10;
-        }
-        if(game->input.dpad_left.pressed){
-            tetro_left(game);
-            game->move_timebuffer=10;
-        }
-        if(game->input.dpad_right.pressed){
-            tetro_right(game);
-            game->move_timebuffer=10;
-        }
-        
-        if(game->input.button_y.just_pressed){
-            rotate_tetro_clockwise(game);
-        }
-        if(game->input.button_x.just_pressed){
-            rotate_tetro_counterclockwise(game);
-        }
-            
-    }
-    else {
-            game->move_timebuffer-=1;
-    }
-
-    return 0;
-}
-
-void generate_new_tetro(GameInstance* game){
-    TetrominoType random_id = game->bag[game->bag_index];
-
-    game->bag_index++;
-    if (game->bag_index==7) {
-        game->bag_index=0;
-        shuffle_bag(game);
-    }
-
-    init_new_tetro(game, random_id);
-
-    if(!check_valid_state(game)){
-        game->loss = 1;
-    }
-}
-
-void draw_playfield_grid(GameInstance* game) { // TRANSL
-    // draw playfield grid (edges and lines)
-
-    // z = 0.1
-    draw_horiz_line(field_left, field_right, field_top, RGBA_WHITE, PVR_LIST_TR_POLY, 5.0f);
-    draw_horiz_line(field_left, field_right, field_bottom, RGBA_WHITE, PVR_LIST_TR_POLY, 5.0f);
-    draw_vert_line(field_left, field_top, field_bottom, RGBA_WHITE, PVR_LIST_TR_POLY, 5.0f);
-    draw_vert_line(field_right, field_top, field_bottom, RGBA_WHITE, PVR_LIST_TR_POLY, 5.0f);
-
-    // z = 0.2
-    // opacity = 50
-    const ColorRgba black_half_opac = {
-        0, 0, 0, 160
-    };
-    for(int i = 20; i < FIELD_HEIGHT; i += 20){
-        draw_horiz_line(field_left, field_right, field_top + i, black_half_opac, PVR_LIST_TR_POLY, 4.6f);
-    }
-
-    for(int j = 20; j < FIELD_WIDTH; j += 20){
-        draw_vert_line(field_left + j, field_top, field_bottom, black_half_opac, PVR_LIST_TR_POLY, 4.6f);
-    }
-}
-
-void draw_field(GameInstance* game){ // OPAQUE
-    // // draw playfield grid (edges and lines)
-    // draw_horiz_line(field_left, field_right, field_top, RGBA_WHITE);
-    // draw_horiz_line(field_left, field_right, field_bottom, RGBA_WHITE);
-    // draw_vert_line(field_left, field_top, field_bottom, RGBA_WHITE);
-    // draw_vert_line(field_right, field_top, field_bottom, RGBA_WHITE);
-
-    // for(int i = 20; i < FIELD_HEIGHT; i += 20){
-    //     draw_horiz_line(field_left, field_right, field_top + i, RGBA_BLACK);
-    // }
-
-    // for(int j = 20; j < FIELD_WIDTH; j += 20){
-    //     draw_vert_line(field_left + j, field_top, field_bottom, RGBA_BLACK);
-    // }
-
-    float block_x, block_y;
-
-    // Draw fixed (committed) blocks
-    for(int row = 3; row < 23; row++){
-        for(int col = 1; col < 11; col++){
-            if (game->field[row][col]) {
-                block_x = field_left + (20 * (col - 1)) + 10;
-                block_y = field_top + (20 * (row - 3)) + 10;
-                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->field[row][col]), PVR_LIST_OP_POLY, 4.0f);
-            }
-        }
-    }
-    int size = game->active_tetro.info->size;
-
-    // draw ghost tetromino
-    // for (int rel_y = 0; rel_y < size; rel_y++) {
-    //     for (int rel_x = 0; rel_x < size; rel_x++) {
-    //         if (game->ghost_tetro.dummy[rel_y][rel_x] != COLOR_NONE) {
-    //             int abs_x = game->ghost_tetro.left_x + rel_x;
-    //             int abs_y = game->ghost_tetro.top_y + rel_y;
-    //             if (abs_y >= 3 && abs_y < 23 && abs_x >= 1 && abs_x < 11) {
-    //                 block_x = field_left + (20 * (abs_x - 1)) + 10;
-    //                 block_y = field_top + (20 * (abs_y - 3)) + 10;
-                    
-    //                 draw_square_centered_on(block_x, block_y, 20, 20, RGBA_WHITE);
-    //             }
-    //         }
-    //     }
-    // }
-
-    // draw active tetro from dummy
-    game->ghost_count = 0;
-    for (int rel_y = 0; rel_y < size; rel_y++) {
-        for (int rel_x = 0; rel_x < size; rel_x++) {
-            if (game->active_tetro.dummy[rel_y][rel_x] != COLOR_NONE) {
-                int abs_x = game->active_tetro.left_x + rel_x;
-                int abs_y = game->active_tetro.top_y + rel_y;
-
-                // only draw visible part of the field
-                if (abs_y >= 3 && abs_y < 23 && abs_x >= 1 && abs_x < 11) {
-                    block_x = field_left + (20 * (abs_x - 1)) + 10;
-                    block_y = field_top + (20 * (abs_y - 3)) + 10;
-                    draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->active_tetro.info->color), PVR_LIST_OP_POLY, 4.0f);
-                }
-            }
-            
-            // ghost tetromino
-            if (game->ghost_tetro.dummy[rel_y][rel_x] != COLOR_NONE) {
-                int abs_x = game->ghost_tetro.left_x + rel_x;
-                int abs_y = game->ghost_tetro.top_y + rel_y;
-                if (abs_y >= 3 && abs_y < 23 && abs_x >= 1 && abs_x < 11) {
-                    block_x = field_left + (20 * (abs_x - 1)) + 10;
-                    block_y = field_top + (20 * (abs_y - 3)) + 10;
-                    game->ghost_tiles[game->ghost_count++] = (Point){block_x, block_y};
-                    // draw_square_centered_on(block_x, block_y, 20, 20, RGBA_WHITE);
-                }
-            }
-        }
-    }
 }
 
 void clear_line(GameInstance* game, int rownum){
@@ -770,96 +180,13 @@ void shuffle_bag(GameInstance* game) {
     }
 }
 
-void draw_hold(GameInstance* game){
-    if(!game->held_tetro){
-        return;
-    }
-
-    int hold_left = 50;
-    int hold_top = 50;
-
-    float block_x;
-    float block_y;
-
-    const TetrominoInfo *held_tetro_info = game->held_tetro;
-    int size = held_tetro_info->size;
-
-    for(int row=0; row<size; row++){
-        for(int col=0; col<size; col++){
-            if(held_tetro_info->shape[row][col]){
-                block_x= hold_left + (20*(col-1)) + 10;
-                block_y = hold_top + (20*(row-1)) + 10;
-                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(held_tetro_info->color), PVR_LIST_OP_POLY, 4.0f);
-            }
-        }
-    }
-}    
-
-void draw_text(float x, float y, char * text){
-    w.x = x;
-    w.y = y;
-    w.z = 5.0f;
-
-    plx_fcxt_begin(fnt_cxt);
-    plx_fcxt_setpos_pnt(fnt_cxt, &w);
-    plx_fcxt_draw(fnt_cxt, text);
-    plx_fcxt_end(fnt_cxt);
-}
-
-void draw_hud(GameInstance* game){
-
-    char score_string[10];
-    char lines_string[10];
-    char level_string[10];
-
-    draw_text(50,300,"Score");
-    sprintf(score_string, "%ld", game->score);
-    draw_text(50,340,score_string);
-
-    draw_text(500,200,"Level");
-    sprintf(level_string, "%d", game->level);
-    draw_text(500,240,level_string);
-
-    draw_text(500,300,"Lines");
-    sprintf(lines_string, "%d", game->line_clears);
-    draw_text(500,340,lines_string);
-
-
-}
-
 void update_pause(GameInstance* game) {
     if (game->input.button_start.just_pressed) {
         paused = !paused;
     }
 }
 
-void process_tetro_fall(GameInstance *game) {
-    float gravity = gravity_by_level[game->level];
-    game->fall_timer += gravity;
-    int blocks_to_fall = 0;
-
-    if (game->fall_timer > 1.0f) {
-        blocks_to_fall = (int)game->fall_timer;
-        game->fall_timer -= (float)blocks_to_fall;
-
-        int hard_drop_distance = game->hard_drop_distance;
-        // dbglog(DBG_INFO, "Current hard drop distance: %d\n", hard_drop_distance);
-        if (blocks_to_fall >= hard_drop_distance) {
-            blocks_to_fall = hard_drop_distance;
-        }
-        if (blocks_to_fall == 0) {
-            commit_active_tetro(game);
-            game->active_tetro.set=1;
-        }
-        else {
-            move_tetro_like_this(&game->active_tetro, 0, blocks_to_fall);
-        }
-        game->hard_drop_distance = find_hard_drop_distance(game);
-    }
-}
-
-void draw_frame_gameplay(GameInstance* game){
-
+void advance_game_logic(GameInstance* game){
     // pressing start after game is lost = restart game
     if(game->loss) {
         if(game->input.button_start.just_pressed){
@@ -882,58 +209,22 @@ void draw_frame_gameplay(GameInstance* game){
             process_tetro_fall(game);
         }
     }
-
-
-    pvr_wait_ready(); // <-- Prevents those ugly flashes!
-    pvr_scene_begin();
-
-    pvr_list_begin(PVR_LIST_OP_POLY);
-    //opaque drawing here
-
-    draw_field(game);
-    draw_hold(game);
-
-    if(game->loss){
-        draw_text(50,200,"You lost!");
-        draw_text(50,250,"Press START to reset");
-    }
-
-    if (paused){
-        draw_text(50, 200, "PAUSED");
-    }
-    pvr_list_finish();
-
-    pvr_list_begin(PVR_LIST_TR_POLY);
-    
-    draw_playfield_grid(game);
-
-    draw_hud(game);
-    //todo move this to function
-    for (int i=0; i<game->ghost_count; i++){
-        draw_square_centered_on(game->ghost_tiles[i].x, game->ghost_tiles[i].y, 20, 20, (ColorRgba){255, 255, 255, 128}, PVR_LIST_TR_POLY, 3.5f);
-    }
-
-    pvr_list_finish();
-
-    pvr_scene_finish();
 }
 
 int main(){
     srand(time(NULL));
 
-    int exitProgram = 0;
-
     init();
     GameInstance game;
     init_game_instance(&game);
 
-    while(!exitProgram){
+    while(1){
         update_inputs(&game.input, 0);
+        advance_game_logic(&game);
         draw_frame_gameplay(&game);
     }
 
     // maple_device_t *vmu = maple_enum_type(0, MAPLE_FUNC_LCD);
     // vmu_draw_lcd(vmu, vmu_clear);
     pvr_shutdown();
-
 }

@@ -1,10 +1,5 @@
 #include "types.h"
-
-#define SCREEN_WIDTH 640
-#define SCREEN_HEIGHT 480
-#define FIELD_HEIGHT 400 // 20 blocks x 20 pixels each
-#define FIELD_WIDTH 200 // 10 blocks x 20 pixels each
-
+#include "constants.h"
 
 // Guideline SRS wall kick test relative offsets
 
@@ -157,10 +152,10 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     }
 };
 
-const int field_left = (SCREEN_WIDTH/2) - (FIELD_WIDTH/2);
-const int field_right = (SCREEN_WIDTH/2) + (FIELD_WIDTH/2);
-const int field_top = (SCREEN_HEIGHT/2) - (FIELD_HEIGHT/2);
-const int field_bottom = (SCREEN_HEIGHT/2) + (FIELD_HEIGHT/2);
+const int field_left = (SCREEN_WIDTH_PIXELS/2) - (FIELD_WIDTH_PIXELS/2);
+const int field_right = (SCREEN_WIDTH_PIXELS/2) + (FIELD_WIDTH_PIXELS/2);
+const int field_top = (SCREEN_HEIGHT_PIXELS/2) - (FIELD_HEIGHT_PIXELS/2);
+const int field_bottom = (SCREEN_HEIGHT_PIXELS/2) + (FIELD_HEIGHT_PIXELS/2);
 
 const ColorRgba RGBA_RED = {255, 0, 0, 255};
 const ColorRgba RGBA_ORANGE = {255, 174, 94, 255};

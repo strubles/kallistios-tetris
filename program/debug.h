@@ -7,4 +7,4 @@ void dbg_print_bag(GameInstance* game);
 void dbg_print_controller(InputState* input);
 void dbg_print_field(GameInstance* game);
 
-#endif
+#endif // DEBUG_H
