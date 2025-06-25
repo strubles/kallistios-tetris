@@ -123,11 +123,13 @@ void clear_line(GameInstance* game, int rownum){
         }
     }
 
-    game->field[3][0]=1;
-    for(int cell=1; cell<=10; cell++){
-        game->field[3][cell]=0;
+    // the top visible row is now completely cleared, but we need
+    // to restore the border (outside of player's view)
+    game->field[TOP_VISIBLE_ROW_INDEX][LEFT_VISIBLE_COLUMN_INDEX-1]=1;
+    for(int cell=LEFT_VISIBLE_COLUMN_INDEX; cell<=RIGHT_VISIBLE_COLUMN_INDEX; cell++){
+        game->field[TOP_VISIBLE_ROW_INDEX][cell]=0;
     }
-    game->field[3][11]=1;
+    game->field[TOP_VISIBLE_ROW_INDEX][RIGHT_VISIBLE_COLUMN_INDEX+1]=1;
 }
 
 void check_lines(GameInstance* game){
@@ -135,9 +137,9 @@ void check_lines(GameInstance* game){
     
     int new_line_clears=0;
 
-    for(int row=3; row<=22; row++){
-        int cell=1;
-        while(cell<=10 && !found_empty_tile){
+    for(int row=TOP_VISIBLE_ROW_INDEX; row<=BOTTOM_VISIBLE_ROW_INDEX; row++){
+        int cell=LEFT_VISIBLE_COLUMN_INDEX;
+        while(cell<=RIGHT_VISIBLE_COLUMN_INDEX && !found_empty_tile){
             if(!game->field[row][cell]){
                 found_empty_tile=1;
             }

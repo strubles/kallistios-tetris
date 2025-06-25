@@ -8,11 +8,22 @@
 #define FIELD_HEIGHT_PIXELS 400 // 20 blocks x 20 pixels each
 #define FIELD_WIDTH_PIXELS 200  // 10 blocks x 20 pixels each
 
+#define BLOCK_WIDTH_PIXELS 20
+
+// layering
 #define Z_TEXT       5.0f   // front-most
-#define Z_GHOST      4.8f
+#define Z_GRID_BORDER 5.0f
 #define Z_GRID       4.6f
-#define Z_TETRO      4.5f
-#define Z_BG         4.0f   // back-most
+#define Z_BLOCKS     4.0f
+#define Z_GHOST      3.5f
+#define Z_BG         0.1f   // back-most
+
+// the whole field is never rendered to the screen
+// see defintion of field_backup in constants.h for illustration of this
+#define TOP_VISIBLE_ROW_INDEX 3
+#define BOTTOM_VISIBLE_ROW_INDEX 22
+#define LEFT_VISIBLE_COLUMN_INDEX 1
+#define RIGHT_VISIBLE_COLUMN_INDEX 10
 
 // Kick table declarations
 extern const int kicks_cw[4][5][2];

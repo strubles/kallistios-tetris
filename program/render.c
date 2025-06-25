@@ -11,7 +11,7 @@ extern point_t w;
 
 void draw_square(float left, float right, float top, float bottom, ColorRgba argb, int pvr_list_type, float z) {
     pvr_poly_hdr_t hdr;
-    pvr_poly_cxt_t cxt;
+    pvr_poly_cxt_t cxt; 
     pvr_vertex_t vert;
 
     // x1 = left
@@ -88,22 +88,18 @@ void draw_playfield_grid(GameInstance* game) { // TRANSL
     // draw playfield grid (edges and lines)
 
     // z = 0.1
-    draw_horiz_line(field_left, field_right, field_top, RGBA_WHITE, PVR_LIST_TR_POLY, 5.0f);
-    draw_horiz_line(field_left, field_right, field_bottom, RGBA_WHITE, PVR_LIST_TR_POLY, 5.0f);
-    draw_vert_line(field_left, field_top, field_bottom, RGBA_WHITE, PVR_LIST_TR_POLY, 5.0f);
-    draw_vert_line(field_right, field_top, field_bottom, RGBA_WHITE, PVR_LIST_TR_POLY, 5.0f);
+    draw_horiz_line(field_left, field_right, field_top, RGBA_WHITE, PVR_LIST_TR_POLY, Z_GRID_BORDER);
+    draw_horiz_line(field_left, field_right, field_bottom, RGBA_WHITE, PVR_LIST_TR_POLY, Z_GRID_BORDER);
+    draw_vert_line(field_left, field_top, field_bottom, RGBA_WHITE, PVR_LIST_TR_POLY, Z_GRID_BORDER);
+    draw_vert_line(field_right, field_top, field_bottom, RGBA_WHITE, PVR_LIST_TR_POLY, Z_GRID_BORDER);
 
-    // z = 0.2
-    // opacity = 50
-    const ColorRgba black_half_opac = {
-        0, 0, 0, 160
-    };
-    for(int i = 20; i < FIELD_HEIGHT_PIXELS; i += 20){
-        draw_horiz_line(field_left, field_right, field_top + i, black_half_opac, PVR_LIST_TR_POLY, 4.6f);
+    for(int i = BLOCK_WIDTH_PIXELS; i < FIELD_HEIGHT_PIXELS; i += BLOCK_WIDTH_PIXELS){
+        // half opacity black
+        draw_horiz_line(field_left, field_right, field_top + i, (ColorRgba){0, 0, 0, 160}, PVR_LIST_TR_POLY, Z_GRID);
     }
 
-    for(int j = 20; j < FIELD_WIDTH_PIXELS; j += 20){
-        draw_vert_line(field_left + j, field_top, field_bottom, black_half_opac, PVR_LIST_TR_POLY, 4.6f);
+    for(int j = BLOCK_WIDTH_PIXELS; j < FIELD_WIDTH_PIXELS; j += BLOCK_WIDTH_PIXELS){
+        draw_vert_line(field_left + j, field_top, field_bottom, (ColorRgba){0, 0, 0, 160}, PVR_LIST_TR_POLY, Z_GRID);
     }
 }
 
@@ -114,13 +110,13 @@ void draw_field_blocks(GameInstance* game){
 
     float block_x, block_y;
 
-    // Draw fixed (committed) blocks
-    for(int row = 3; row < 23; row++){
-        for(int col = 1; col < 11; col++){
+    // Draw fixed (committed) block
+    for(int row = TOP_VISIBLE_ROW_INDEX; row <= BOTTOM_VISIBLE_ROW_INDEX; row++){
+        for(int col = LEFT_VISIBLE_COLUMN_INDEX; col <= RIGHT_VISIBLE_COLUMN_INDEX; col++){
             if (game->field[row][col]) {
-                block_x = field_left + (20 * (col - 1)) + 10;
-                block_y = field_top + (20 * (row - 3)) + 10;
-                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->field[row][col]), PVR_LIST_OP_POLY, 4.0f);
+                block_x = field_left + (BLOCK_WIDTH_PIXELS * (col - LEFT_VISIBLE_COLUMN_INDEX)) + (BLOCK_WIDTH_PIXELS/2);
+                block_y = field_top + (BLOCK_WIDTH_PIXELS * (row - TOP_VISIBLE_ROW_INDEX)) + (BLOCK_WIDTH_PIXELS/2);
+                draw_square_centered_on(block_x, block_y, BLOCK_WIDTH_PIXELS, BLOCK_WIDTH_PIXELS, get_argb_from_blockcolor(game->field[row][col]), PVR_LIST_OP_POLY, Z_BLOCKS);
             }
         }
     }
@@ -135,10 +131,10 @@ void draw_field_blocks(GameInstance* game){
                 int abs_y = game->active_tetro.top_y + rel_y;
 
                 // only draw visible part of the field
-                if (abs_y >= 3 && abs_y < 23 && abs_x >= 1 && abs_x < 11) {
-                    block_x = field_left + (20 * (abs_x - 1)) + 10;
-                    block_y = field_top + (20 * (abs_y - 3)) + 10;
-                    draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(game->active_tetro.info->color), PVR_LIST_OP_POLY, 4.0f);
+                if (abs_y >= TOP_VISIBLE_ROW_INDEX && abs_y <= BOTTOM_VISIBLE_ROW_INDEX && abs_x >= LEFT_VISIBLE_COLUMN_INDEX && abs_x <= RIGHT_VISIBLE_COLUMN_INDEX) {
+                    block_x = field_left + (BLOCK_WIDTH_PIXELS * (abs_x - LEFT_VISIBLE_COLUMN_INDEX)) + (BLOCK_WIDTH_PIXELS/2);
+                    block_y = field_top + (BLOCK_WIDTH_PIXELS * (abs_y - TOP_VISIBLE_ROW_INDEX)) + (BLOCK_WIDTH_PIXELS/2);
+                    draw_square_centered_on(block_x, block_y, BLOCK_WIDTH_PIXELS, BLOCK_WIDTH_PIXELS, get_argb_from_blockcolor(game->active_tetro.info->color), PVR_LIST_OP_POLY, Z_BLOCKS);
                 }
             }
             
@@ -146,11 +142,10 @@ void draw_field_blocks(GameInstance* game){
             if (game->ghost_tetro.dummy[rel_y][rel_x] != COLOR_NONE) {
                 int abs_x = game->ghost_tetro.left_x + rel_x;
                 int abs_y = game->ghost_tetro.top_y + rel_y;
-                if (abs_y >= 3 && abs_y < 23 && abs_x >= 1 && abs_x < 11) {
-                    block_x = field_left + (20 * (abs_x - 1)) + 10;
-                    block_y = field_top + (20 * (abs_y - 3)) + 10;
+                if (abs_y >= TOP_VISIBLE_ROW_INDEX && abs_y <= BOTTOM_VISIBLE_ROW_INDEX && abs_x >= LEFT_VISIBLE_COLUMN_INDEX && abs_x <= RIGHT_VISIBLE_COLUMN_INDEX) {
+                    block_x = field_left + (BLOCK_WIDTH_PIXELS * (abs_x - LEFT_VISIBLE_COLUMN_INDEX)) + (BLOCK_WIDTH_PIXELS/2);
+                    block_y = field_top + (BLOCK_WIDTH_PIXELS * (abs_y - TOP_VISIBLE_ROW_INDEX)) + (BLOCK_WIDTH_PIXELS/2);
                     game->ghost_tiles[game->ghost_count++] = (Point){block_x, block_y};
-                    // draw_square_centered_on(block_x, block_y, 20, 20, RGBA_WHITE);
                 }
             }
         }
@@ -174,9 +169,9 @@ void draw_hold(GameInstance* game){
     for(int row=0; row<size; row++){
         for(int col=0; col<size; col++){
             if(held_tetro_info->shape[row][col]){
-                block_x= hold_left + (20*(col-1)) + 10;
-                block_y = hold_top + (20*(row-1)) + 10;
-                draw_square_centered_on(block_x, block_y, 20, 20, get_argb_from_blockcolor(held_tetro_info->color), PVR_LIST_OP_POLY, 4.0f);
+                block_x= hold_left + (BLOCK_WIDTH_PIXELS*(col-1)) + (BLOCK_WIDTH_PIXELS/2);
+                block_y = hold_top + (BLOCK_WIDTH_PIXELS*(row-1)) + (BLOCK_WIDTH_PIXELS/2);
+                draw_square_centered_on(block_x, block_y, BLOCK_WIDTH_PIXELS, BLOCK_WIDTH_PIXELS, get_argb_from_blockcolor(held_tetro_info->color), PVR_LIST_OP_POLY, Z_BLOCKS);
             }
         }
     }
@@ -185,7 +180,7 @@ void draw_hold(GameInstance* game){
 void draw_text(float x, float y, char * text){
     w.x = x;
     w.y = y;
-    w.z = 5.0f;
+    w.z = Z_TEXT;
 
     plx_fcxt_begin(fnt_cxt);
     plx_fcxt_setpos_pnt(fnt_cxt, &w);
@@ -230,7 +225,7 @@ void draw_translucent_polygons(GameInstance* game){
 
     // ghost tiles
     for (int i=0; i<game->ghost_count; i++){
-        draw_square_centered_on(game->ghost_tiles[i].x, game->ghost_tiles[i].y, 20, 20, (ColorRgba){255, 255, 255, 128}, PVR_LIST_TR_POLY, 3.5f);
+        draw_square_centered_on(game->ghost_tiles[i].x, game->ghost_tiles[i].y, BLOCK_WIDTH_PIXELS, BLOCK_WIDTH_PIXELS, (ColorRgba){255, 255, 255, 128}, PVR_LIST_TR_POLY, Z_GHOST);
     }
 }
 
@@ -239,7 +234,7 @@ void draw_frame_gameplay(GameInstance* game){
     pvr_scene_begin();
 
     pvr_list_begin(PVR_LIST_OP_POLY);
-    draw_square(0, 640, 0, 480, (ColorRgba){201, 195, 255, 255}, PVR_LIST_OP_POLY, 0.1f); //background
+    draw_square(0, 640, 0, 480, (ColorRgba){201, 195, 255, 255}, PVR_LIST_OP_POLY, Z_BG); //background
     draw_opaque_polygons(game);
     pvr_list_finish();
 
@@ -269,8 +264,4 @@ ColorRgba get_argb_from_blockcolor(BlockColor color){
         default:
             return RGBA_WHITE;
     }
-}
-
-void draw_background(float r, float g, float b) {
-   
 }
