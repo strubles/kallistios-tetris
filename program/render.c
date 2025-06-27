@@ -9,6 +9,48 @@ extern plx_font_t * fnt;
 extern plx_fcxt_t * fnt_cxt;
 extern point_t w;
 
+void draw_triangle(float x1, float y1,
+                   float x2, float y2,
+                   float x3, float y3,
+                   ColorRgba argb,
+                   int pvr_list_type, float z)
+                   {
+
+    // POINTS SUBMITTED MUST BE IN COUNTER-CLOCKWISE ORDER
+
+    pvr_poly_hdr_t hdr;
+    pvr_poly_cxt_t cxt;
+    pvr_vertex_t vert;
+
+    pvr_poly_cxt_col(&cxt, pvr_list_type);
+
+    if (pvr_list_type == PVR_LIST_TR_POLY) {
+        cxt.gen.alpha = PVR_ALPHA_ENABLE;
+    }
+    cxt.gen.culling = PVR_CULLING_NONE; // ?
+    pvr_poly_compile(&hdr, &cxt);
+    pvr_prim(&hdr, sizeof(hdr));
+
+    vert.flags = PVR_CMD_VERTEX;
+    vert.x = x1;
+    vert.y = y1;
+    vert.z = z;
+    vert.u = 0;
+    vert.v = 0;
+    vert.argb = PVR_PACK_COLOR(argb.a/255.0f, argb.r/255.0f, argb.g/255.0f, argb.b/255.0f);
+    vert.oargb = 0;
+    pvr_prim(&vert, sizeof(vert));
+
+    vert.x = x2;
+    vert.y = y2;
+    pvr_prim(&vert, sizeof(vert));
+
+    vert.flags = PVR_CMD_VERTEX_EOL; //tells PVR that this will be the final point
+    vert.x = x3;
+    vert.y = y3;
+    pvr_prim(&vert, sizeof(vert));
+}
+
 void draw_square(float left, float right, float top, float bottom, ColorRgba argb, int pvr_list_type, float z) {
     pvr_poly_hdr_t hdr;
     pvr_poly_cxt_t cxt; 
@@ -116,7 +158,8 @@ void draw_field_blocks(GameInstance* game){
             if (game->field[row][col]) {
                 block_x = field_left + (BLOCK_WIDTH_PIXELS * (col - LEFT_VISIBLE_COLUMN_INDEX)) + (BLOCK_WIDTH_PIXELS/2);
                 block_y = field_top + (BLOCK_WIDTH_PIXELS * (row - TOP_VISIBLE_ROW_INDEX)) + (BLOCK_WIDTH_PIXELS/2);
-                draw_square_centered_on(block_x, block_y, BLOCK_WIDTH_PIXELS, BLOCK_WIDTH_PIXELS, get_argb_from_blockcolor(game->field[row][col]), PVR_LIST_OP_POLY, Z_BLOCKS);
+                draw_block(block_x, block_y, get_argb_from_blockcolor(game->field[row][col]));
+                // draw_square_centered_on(block_x, block_y, BLOCK_WIDTH_PIXELS, BLOCK_WIDTH_PIXELS, get_argb_from_blockcolor(game->field[row][col]), PVR_LIST_OP_POLY, Z_BLOCKS);
             }
         }
     }
@@ -134,7 +177,8 @@ void draw_field_blocks(GameInstance* game){
                 if (abs_y >= TOP_VISIBLE_ROW_INDEX && abs_y <= BOTTOM_VISIBLE_ROW_INDEX && abs_x >= LEFT_VISIBLE_COLUMN_INDEX && abs_x <= RIGHT_VISIBLE_COLUMN_INDEX) {
                     block_x = field_left + (BLOCK_WIDTH_PIXELS * (abs_x - LEFT_VISIBLE_COLUMN_INDEX)) + (BLOCK_WIDTH_PIXELS/2);
                     block_y = field_top + (BLOCK_WIDTH_PIXELS * (abs_y - TOP_VISIBLE_ROW_INDEX)) + (BLOCK_WIDTH_PIXELS/2);
-                    draw_square_centered_on(block_x, block_y, BLOCK_WIDTH_PIXELS, BLOCK_WIDTH_PIXELS, get_argb_from_blockcolor(game->active_tetro.info->color), PVR_LIST_OP_POLY, Z_BLOCKS);
+                    draw_block(block_x, block_y, get_argb_from_blockcolor(game->active_tetro.info->color));
+                    // draw_square_centered_on(block_x, block_y, BLOCK_WIDTH_PIXELS, BLOCK_WIDTH_PIXELS, get_argb_from_blockcolor(game->active_tetro.info->color), PVR_LIST_OP_POLY, Z_BLOCKS);
                 }
             }
             
@@ -171,10 +215,26 @@ void draw_hold(GameInstance* game){
             if(held_tetro_info->shape[row][col]){
                 block_x= hold_left + (BLOCK_WIDTH_PIXELS*(col-1)) + (BLOCK_WIDTH_PIXELS/2);
                 block_y = hold_top + (BLOCK_WIDTH_PIXELS*(row-1)) + (BLOCK_WIDTH_PIXELS/2);
-                draw_square_centered_on(block_x, block_y, BLOCK_WIDTH_PIXELS, BLOCK_WIDTH_PIXELS, get_argb_from_blockcolor(held_tetro_info->color), PVR_LIST_OP_POLY, Z_BLOCKS);
+                draw_block(block_x, block_y, get_argb_from_blockcolor(held_tetro_info->color));
+                // draw_square_centered_on(block_x, block_y, BLOCK_WIDTH_PIXELS, BLOCK_WIDTH_PIXELS, get_argb_from_blockcolor(held_tetro_info->color), PVR_LIST_OP_POLY, Z_BLOCKS);
             }
         }
     }
+}
+
+void draw_block(float center_x, float center_y, ColorRgba color) {
+    float left = center_x - (BLOCK_WIDTH_PIXELS/2);
+    float right = center_x + (BLOCK_WIDTH_PIXELS/2);
+    float top = center_y - (BLOCK_WIDTH_PIXELS/2);
+    float bottom = center_y + (BLOCK_WIDTH_PIXELS/2);
+
+    // dbglog(DBG_INFO, "Block bounds: left=%.2f, right=%.2f, top=%.2f, bottom=%.2f\n", left, right, top, bottom);
+
+    draw_triangle(left, top, left, bottom, right, top, (ColorRgba){255,255,255,255}, PVR_LIST_OP_POLY, 3.7f);
+    draw_triangle(left, bottom, right, bottom, right, top, (ColorRgba){0,0,0,255}, PVR_LIST_OP_POLY, 3.7f);
+    // draw_triangle(right, top, left, top, left, bottom, (ColorRgba){255, 255, 255, 255}, PVR_LIST_OP_POLY, Z_BLOCKS-1.0f);
+    // draw_triangle(right, top, left, bottom, right, bottom, (ColorRgba){0, 0, 0, 255}, PVR_LIST_OP_POLY, Z_BLOCKS-1.0f);
+    draw_square_centered_on(center_x, center_y, (float)BLOCK_WIDTH_PIXELS*0.6f, (float)BLOCK_WIDTH_PIXELS*0.6f, color, PVR_LIST_OP_POLY, Z_BLOCKS);
 }
 
 void draw_text(float x, float y, char * text){
