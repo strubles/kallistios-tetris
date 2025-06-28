@@ -16,20 +16,20 @@ typedef enum {
 } TetrominoType;
 
 typedef enum {
-    COLOR_NONE = 0,
-    COLOR_CYAN,
-    COLOR_YELLOW,
-    COLOR_PURPLE,
-    COLOR_GREEN,
-    COLOR_RED,
-    COLOR_BLUE,
-    COLOR_ORANGE,
-    COLOR_WHITE
+    BLOCK_NONE = 0,
+    BLOCK_CYAN,
+    BLOCK_YELLOW,
+    BLOCK_PURPLE,
+    BLOCK_GREEN,
+    BLOCK_RED,
+    BLOCK_BLUE,
+    BLOCK_ORANGE,
+    BLOCK_WHITE
 } BlockColor;
 
-typedef struct {
-    uint8_t r, g, b, a;
-} ColorRgba;
+// typedef struct {
+//     uint8_t r, g, b, a;
+// } ColorRgba;
 
 typedef enum {
     DEFAULT = 0,
@@ -159,5 +159,11 @@ typedef struct {
     int ghost_count;
 
 } GameInstance;
+
+typedef struct {
+    uint32_t base;
+    uint32_t highlight;
+    uint32_t shadow;
+} BlockColorSet;
 
 #endif // TYPES_H

@@ -1,5 +1,7 @@
 #include "types.h"
 #include "constants.h"
+#include "colors.h"
+
 
 // Guideline SRS wall kick test relative offsets
 
@@ -41,7 +43,7 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     [TETRO_I] = {
         .type = TETRO_I,
         .symbol = 'I',
-        .color = COLOR_CYAN,
+        .color = BLOCK_CYAN,
         .size = 4,
         .shape = {
             { 0, 0, 0, 0 },
@@ -58,7 +60,7 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     [TETRO_O] = {
         .type = TETRO_O,
         .symbol = 'O',
-        .color = COLOR_YELLOW,
+        .color = BLOCK_YELLOW,
         .size = 2,
         .shape = {
             { 1, 1 },
@@ -73,7 +75,7 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     [TETRO_T] = {
         .type = TETRO_T,
         .symbol = 'T',
-        .color = COLOR_PURPLE,
+        .color = BLOCK_PURPLE,
         .size = 3,
         .shape = {
             { 0, 1, 0 },
@@ -89,7 +91,7 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     [TETRO_S] = {
         .type = TETRO_S,
         .symbol = 'S',
-        .color = COLOR_GREEN,
+        .color = BLOCK_GREEN,
         .size = 3,
         .shape = {
             { 0, 1, 1 },
@@ -105,7 +107,7 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     [TETRO_Z] = {
         .type = TETRO_Z,
         .symbol = 'Z',
-        .color = COLOR_RED,
+        .color = BLOCK_RED,
         .size = 3,
         .shape = {
             { 1, 1, 0 },
@@ -121,7 +123,7 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     [TETRO_J] = {
         .type = TETRO_J,
         .symbol = 'J',
-        .color = COLOR_BLUE,
+        .color = BLOCK_BLUE,
         .size = 3,
         .shape = {
             { 1, 0, 0 },
@@ -137,7 +139,7 @@ const TetrominoInfo tetromino_infos[TETRO_COUNT] = {
     [TETRO_L] = {
         .type = TETRO_L,
         .symbol = 'L',
-        .color = COLOR_ORANGE,
+        .color = BLOCK_ORANGE,
         .size = 3,
         .shape = {
             { 0, 0, 1 },
@@ -157,15 +159,55 @@ const int field_right = (SCREEN_WIDTH_PIXELS/2) + (FIELD_WIDTH_PIXELS/2);
 const int field_top = (SCREEN_HEIGHT_PIXELS/2) - (FIELD_HEIGHT_PIXELS/2);
 const int field_bottom = (SCREEN_HEIGHT_PIXELS/2) + (FIELD_HEIGHT_PIXELS/2);
 
-const ColorRgba RGBA_RED = {255, 0, 0, 255};
-const ColorRgba RGBA_ORANGE = {255, 174, 94, 255};
-const ColorRgba RGBA_YELLOW = {255, 255, 0, 255};
-const ColorRgba RGBA_GREEN = {0, 255, 0, 255};
-const ColorRgba RGBA_CYAN = {0, 255, 255, 255};
-const ColorRgba RGBA_BLUE = {0, 0, 255, 255};
-const ColorRgba RGBA_PURPLE = {255, 0, 255, 255};
-const ColorRgba RGBA_WHITE = {255, 255, 255, 255};
-const ColorRgba RGBA_BLACK = {0, 0, 0, 255};
+const BlockColorSet tetromino_colors[TETRO_COUNT] = {
+    [BLOCK_RED] = {
+        .base       = 0xffdc3545, // #dc3545
+        .highlight  = 0xfff67456, // #f67456
+        .shadow     = 0xffbe2457  // #be2457
+    },
+    [BLOCK_ORANGE] = {
+        .base       = 0xfffd7e14, // #fd7e14
+        .highlight  = 0xffffaa26, // #ffaa26
+        .shadow     = 0xfffd4514  // #fd4514
+    },
+    [BLOCK_YELLOW] = {
+        .base       = 0xffffc107, // #ffc107
+        .highlight  = 0xfffff200, // #fff200
+        .shadow     = 0xffff9307, // #ff9307
+    },
+    [BLOCK_GREEN] = {
+        .base       = 0xff28a745, // #28a745
+        .highlight  = 0xff5edb32, // #5edb32
+        .shadow     = 0xff177f59  // #177f59
+    },
+    [BLOCK_CYAN] = {
+        .base       = 0xff05ddff, // #05ddff
+        .highlight  = 0xff65fffa, // #65fffa
+        .shadow     = 0xff0592ff  // #0592ff
+    },
+    [BLOCK_BLUE] = {
+        .base       = 0xff007bff, // #007bff
+        .highlight  = 0xff00d2ff, // #00d2ff
+        .shadow     = 0xff0048ff  // #0048ff
+    },
+    [BLOCK_PURPLE] = {
+        .base       = 0xff753eda, // #753eda
+        .highlight  = 0xffb866ec, // #b866ec
+        .shadow     = 0xff4e32b5  // #4e32b5
+    }
+};
+
+// const uint32_t RGBA_RED = {255, 0, 0, 255};
+// const uint32_t RGBA_ORANGE = {255, 174, 94, 255};
+// const uint32_t RGBA_YELLOW = {255, 255, 0, 255};
+// const uint32_t RGBA_GREEN = {0, 255, 0, 255};
+// const uint32_t RGBA_CYAN = {0, 255, 255, 255};
+// const uint32_t RGBA_BLUE = {0, 0, 255, 255};
+// const uint32_t RGBA_PURPLE = {255, 0, 255, 255};
+// const uint32_t RGBA_WHITE = {255, 255, 255, 255};
+// const uint32_t RGBA_BLACK = {0, 0, 0, 255};
+
+
 
 // setting up the default field state
 // Only rows 3-22 and columns 1-10 are visible to player

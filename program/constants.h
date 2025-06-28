@@ -40,16 +40,18 @@ extern const int field_right;
 extern const int field_top;
 extern const int field_bottom;
 
+extern const BlockColorSet tetromino_colors[TETRO_COUNT];
+
 // RGBA colors
-extern const ColorRgba RGBA_RED;
-extern const ColorRgba RGBA_ORANGE;
-extern const ColorRgba RGBA_YELLOW;
-extern const ColorRgba RGBA_GREEN;
-extern const ColorRgba RGBA_CYAN;
-extern const ColorRgba RGBA_BLUE;
-extern const ColorRgba RGBA_PURPLE;
-extern const ColorRgba RGBA_WHITE;
-extern const ColorRgba RGBA_BLACK;
+// extern const ColorRgba RGBA_RED;
+// extern const ColorRgba RGBA_ORANGE;
+// extern const ColorRgba RGBA_YELLOW;
+// extern const ColorRgba RGBA_GREEN;
+// extern const ColorRgba RGBA_CYAN;
+// extern const ColorRgba RGBA_BLUE;
+// extern const ColorRgba RGBA_PURPLE;
+// extern const ColorRgba RGBA_WHITE;
+// extern const ColorRgba RGBA_BLACK;
 
 // Default field layout
 extern const BlockColor field_backup[24][12];
