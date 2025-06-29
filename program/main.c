@@ -61,7 +61,7 @@ void init(){
 
 void init_game_instance(GameInstance* game){
     paused = 0;
-    memset(game->hold_field, COLOR_NONE, sizeof(game->hold_field));
+    memset(game->hold_field, BLOCK_NONE, sizeof(game->hold_field));
     memcpy(game->field, field_backup, 288*sizeof(int));
     game->held_tetro = 0;
     game->hold_eligible = 1; // whether we will let the user perform a tetromino hold
@@ -95,18 +95,13 @@ int check_valid_state(GameInstance* game){
         for (int relative_x = 0; relative_x < size; relative_x++) {
             int block = game->active_tetro.dummy[relative_y][relative_x];
 
-            if (block != COLOR_NONE) {
+            if (block != BLOCK_NONE) {
                 int field_x = game->active_tetro.left_x + relative_x;
                 int field_y = game->active_tetro.top_y + relative_y;
 
-                // Check out-of-bounds
-                // if (field_x < 0 || field_x >= FIELD_WIDTH_PIXELS || field_y < 0 || field_y >= FIELD_HEIGHT_PIXELS) {
-                //     return 0;
-                // }
-
                 int field_block = game->field[field_y][field_x];
 
-                if (field_block != COLOR_NONE) {
+                if (field_block != BLOCK_NONE) {
                     return 0;
                 }
             }
@@ -189,6 +184,7 @@ void update_pause(GameInstance* game) {
 }
 
 void advance_game_logic(GameInstance* game){
+
     // pressing start after game is lost = restart game
     if(game->loss) {
         if(game->input.button_start.just_pressed){

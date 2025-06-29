@@ -1,4 +1,4 @@
-#include <kos///dbglog.h>
+#include <kos/dbglog.h>
 #include "types.h"
 #include "constants.h"
 
@@ -37,7 +37,7 @@ void dbg_print_field(GameInstance *game) {
             int size = game->active_tetro.info->size;
             for (int dy = 0; dy < size; dy++) {
                 for (int dx = 0; dx < size; dx++) {
-                    if (game->active_tetro.dummy[dy][dx] != COLOR_NONE) {
+                    if (game->active_tetro.dummy[dy][dx] != BLOCK_NONE) {
                         int abs_y = game->active_tetro.top_y + dy;
                         int abs_x = game->active_tetro.left_x + dx;
                         if (abs_y == row && abs_x == col) {
@@ -51,7 +51,7 @@ void dbg_print_field(GameInstance *game) {
                 dbglog(DBG_INFO, "@");  // Active tetromino block
             } else {
                 BlockColor block = game->field[row][col];
-                if (block == COLOR_NONE) {
+                if (block == BLOCK_NONE) {
                     dbglog(DBG_INFO, ".");
                 } else {
                     dbglog(DBG_INFO, "#");  // Committed block

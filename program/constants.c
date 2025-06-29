@@ -1,7 +1,5 @@
 #include "types.h"
 #include "constants.h"
-#include "colors.h"
-
 
 // Guideline SRS wall kick test relative offsets
 
@@ -196,18 +194,6 @@ const BlockColorSet tetromino_colors[TETRO_COUNT] = {
         .shadow     = 0xff4e32b5  // #4e32b5
     }
 };
-
-// const uint32_t RGBA_RED = {255, 0, 0, 255};
-// const uint32_t RGBA_ORANGE = {255, 174, 94, 255};
-// const uint32_t RGBA_YELLOW = {255, 255, 0, 255};
-// const uint32_t RGBA_GREEN = {0, 255, 0, 255};
-// const uint32_t RGBA_CYAN = {0, 255, 255, 255};
-// const uint32_t RGBA_BLUE = {0, 0, 255, 255};
-// const uint32_t RGBA_PURPLE = {255, 0, 255, 255};
-// const uint32_t RGBA_WHITE = {255, 255, 255, 255};
-// const uint32_t RGBA_BLACK = {0, 0, 0, 255};
-
-
 
 // setting up the default field state
 // Only rows 3-22 and columns 1-10 are visible to player

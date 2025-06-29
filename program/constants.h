@@ -3,6 +3,9 @@
 
 #include "types.h"
 
+#define RGB(rgb)      ((0xFF << 24) | ((rgb) & 0xFFFFFF)) // default opaque
+#define RGBA(rgb, a)  (((a) << 24) | ((rgb) & 0xFFFFFF))
+
 #define SCREEN_WIDTH_PIXELS 640
 #define SCREEN_HEIGHT_PIXELS 480
 #define FIELD_HEIGHT_PIXELS 400 // 20 blocks x 20 pixels each
@@ -13,8 +16,8 @@
 // layering
 #define Z_TEXT       5.0f   // front-most
 #define Z_GRID_BORDER 5.0f
-#define Z_GRID       4.6f
 #define Z_BLOCKS     4.0f
+#define Z_GRID       3.7f
 #define Z_GHOST      3.5f
 #define Z_BG         0.1f   // back-most
 
@@ -41,17 +44,6 @@ extern const int field_top;
 extern const int field_bottom;
 
 extern const BlockColorSet tetromino_colors[TETRO_COUNT];
-
-// RGBA colors
-// extern const ColorRgba RGBA_RED;
-// extern const ColorRgba RGBA_ORANGE;
-// extern const ColorRgba RGBA_YELLOW;
-// extern const ColorRgba RGBA_GREEN;
-// extern const ColorRgba RGBA_CYAN;
-// extern const ColorRgba RGBA_BLUE;
-// extern const ColorRgba RGBA_PURPLE;
-// extern const ColorRgba RGBA_WHITE;
-// extern const ColorRgba RGBA_BLACK;
 
 // Default field layout
 extern const BlockColor field_backup[24][12];

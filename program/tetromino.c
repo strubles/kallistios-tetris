@@ -35,15 +35,12 @@ void init_new_tetro(GameInstance* game, TetrominoType type){
 
 void commit_active_tetro(GameInstance* game){
     // The active tetromino gets copied from the active tetromino array to the main field
-    // data structure to "set" it.
-    // THIS DOES NOT DO CHECKS to validate position! Check it first with check_valid_state()
-
-    // dbglog(DBG_INFO, "commiting tetromino with left x %d, top y %d\n",game->active_tetro.left_x,game->active_tetro.top_y);
+    // data structure to set it.
 
     int size = game->active_tetro.info->size;
     for (int relative_y = 0; relative_y < size; relative_y++) {
         for (int relative_x = 0; relative_x < size; relative_x++) {
-            if (game->active_tetro.dummy[relative_y][relative_x] != COLOR_NONE) {
+            if (game->active_tetro.dummy[relative_y][relative_x] != BLOCK_NONE) {
 
                 // convert relative tetro array coordinates to absolute field coordinates
                 int field_x = game->active_tetro.left_x + relative_x;
@@ -83,12 +80,10 @@ void update_ghost_piece(GameInstance* game){
 
 void soft_drop(GameInstance* game, int award_score, int commit){
     // one block at a time
-    // dbglog(DBG_INFO, "tetro_fall: old tetro top y: %d\n", game->active_tetro.top_y);
+
     game->active_tetro.top_y += 1;
-    // dbglog(DBG_INFO, "tetro_fall: new tetro top y: %d\n", game->active_tetro.top_y);
 
     if(!check_valid_state(game)){
-        // dbglog(DBG_INFO, "%d is invalid\n", game->active_tetro.top_y);
         game->active_tetro.top_y -= 1; //undo it
         if (commit) {
             commit_active_tetro(game);
@@ -99,7 +94,7 @@ void soft_drop(GameInstance* game, int award_score, int commit){
         if(award_score){
             game->score+=1;
         }
-        game->hard_drop_distance = find_hard_drop_distance(game);//, game->active_tetro);
+        game->hard_drop_distance = find_hard_drop_distance(game);
         update_ghost_piece(game);
     }
 }
@@ -175,10 +170,9 @@ void move_tetro_like_this(Tetrodata* tetro, int x, int y){
     tetro->top_y+=y;
 }
 
-void swap(int* arg1, int* arg2)
-// Swap the two values in memory (in place)
-// Used in tetromino rotation
-{
+void swap(int* arg1, int* arg2){
+    // Swap the two values in memory (in place)
+    // Used in tetromino rotation
     int buffer = *arg1;
     *arg1 = *arg2;
     *arg2 = buffer;
@@ -306,8 +300,8 @@ void hold_tetromino(GameInstance* game){
     game->hold_eligible=0;
 }
 
-
 int process_tetro_movement(GameInstance* game){
+
     // the triggers on the sega dreamcast are analog triggers that range from 0-255
     // I have the hold function trigger if it's at least half-pressed (128)
     if(game->input.trigger_left >= 128 && game->hold_eligible){
@@ -341,8 +335,7 @@ int process_tetro_movement(GameInstance* game){
         }
         if(game->input.button_x.just_pressed){
             rotate_tetro_counterclockwise(game);
-        }
-            
+        }    
     }
     else {
             game->move_timebuffer-=1;
@@ -377,7 +370,7 @@ void process_tetro_fall(GameInstance *game) {
         game->fall_timer -= (float)blocks_to_fall;
 
         int hard_drop_distance = game->hard_drop_distance;
-        // dbglog(DBG_INFO, "Current hard drop distance: %d\n", hard_drop_distance);
+
         if (blocks_to_fall >= hard_drop_distance) {
             blocks_to_fall = hard_drop_distance;
         }
