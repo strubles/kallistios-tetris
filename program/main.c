@@ -88,6 +88,8 @@ void init_game_instance(GameInstance* game){
 }
 
 int check_valid_state(GameInstance* game){
+    // compare the blocks of the active tetro array and its placement
+    // on the grid to the playfield to check for overlaps
 
     int size = game->active_tetro.info->size;
 
@@ -128,24 +130,30 @@ void clear_line(GameInstance* game, int rownum){
 }
 
 void check_lines(GameInstance* game){
-    int found_empty_tile=0;
-    
     int new_line_clears=0;
 
-    for(int row=TOP_VISIBLE_ROW_INDEX; row<=BOTTOM_VISIBLE_ROW_INDEX; row++){
-        int cell=LEFT_VISIBLE_COLUMN_INDEX;
-        while(cell<=RIGHT_VISIBLE_COLUMN_INDEX && !found_empty_tile){
+    int found_empty_row=0;
+    int empty_tiles=0;
+
+    // start from bottom to top
+    int row=BOTTOM_VISIBLE_ROW_INDEX;
+    while(row>=TOP_VISIBLE_ROW_INDEX && !found_empty_row){
+        for(int cell=LEFT_VISIBLE_COLUMN_INDEX; cell<=RIGHT_VISIBLE_COLUMN_INDEX; cell++){
             if(!game->field[row][cell]){
-                found_empty_tile=1;
+                empty_tiles += 1;
             }
-            cell++;
         }
-        if(!found_empty_tile){
+        if(empty_tiles==0){
             clear_line(game, row);
             game->line_clears++;
             new_line_clears++;
         }
-        found_empty_tile=0;
+        // if the whole row is empty, no point in checking any lines above this
+        else if(empty_tiles==10){
+            found_empty_row=1;
+        }
+        empty_tiles=0;
+        row--;
     }
     if(new_line_clears==1){
         game->score += game->level * 100;
