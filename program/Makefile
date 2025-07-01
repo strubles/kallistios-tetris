@@ -1,40 +1,36 @@
-#
-# Basic KallistiOS skeleton / test program
-# Copyright (C)2001-2004 Dan Potter
-#   
+TARGET = out/program.elf
 
-# Put the filename of the output binary here
-TARGET = program.elf
+# base directories
+SRCDIR = src
+INCDIR = include
+OUTDIR = out
 
-# List all of your C files here, but change the extension to ".o"
-# Include "romdisk.o" if you want a rom disk.
-OBJS = main.o constants.o romdisk.o debug.o input.o render.o tetromino.o
+CSOURCES = $(wildcard $(SRCDIR)/*.c)
+OBJS = $(patsubst $(SRCDIR)/%.c, $(OUTDIR)/%.o, $(CSOURCES)) romdisk.o
 
 # If you define this, the Makefile.rules will create a romdisk.o for you
 # from the named dir.
 KOS_ROMDISK_DIR = romdisk
 
-KOS_CFLAGS += -DDEBUG
+KOS_CFLAGS += -DDEBUG -I$(INCDIR)
 
-# The rm-elf step is to remove the target before building, to force the
-# re-creation of the rom disk.
 all: rm-elf $(TARGET)
 
 include $(KOS_BASE)/Makefile.rules
+
+# Ensure the output directory exists before building the final ELF
+$(TARGET): $(OBJS)
+	@mkdir -p $(OUTDIR)
+	$(KOS_CC) $(KOS_CFLAGS) $(KOS_LDFLAGS) -o $@ $(KOS_START) \
+		$(OBJS) $(OBJEXTRA) -lparallax -lmp3 -lm $(KOS_LIBS)
+
+# Compile .c files into out/*.o
+$(OUTDIR)/%.o: $(SRCDIR)/%.c
+	@mkdir -p $(OUTDIR)
+	$(KOS_CC) $(KOS_CFLAGS) -c $< -o $@
 
 clean:
 	-rm -f $(TARGET) $(OBJS) romdisk.*
 
 rm-elf:
 	-rm -f $(TARGET) romdisk.*
-
-$(TARGET): $(OBJS)
-	$(KOS_CC) $(KOS_CFLAGS) $(KOS_LDFLAGS) -o $(TARGET) $(KOS_START) \
-		$(OBJS) $(OBJEXTRA) -lparallax -lmp3 -lm $(KOS_LIBS)
-
-run: $(TARGET)
-	$(KOS_LOADER) $(TARGET)
-
-dist:
-	rm -f $(OBJS) romdisk.o romdisk.img
-	$(KOS_STRIP) $(TARGET)
